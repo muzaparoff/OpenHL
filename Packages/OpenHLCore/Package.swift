@@ -7,7 +7,7 @@ let package = Package(
     name: "OpenHLCore",
     platforms: [
         .iOS(.v17),
-        .macOS(.v14)
+        .macOS(.v14),
     ],
     products: [
         .library(
@@ -28,6 +28,6 @@ let package = Package(
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
-        )
+        ),
     ]
 )

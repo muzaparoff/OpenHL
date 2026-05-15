@@ -1,0 +1,162 @@
+# CI for open-hl — Phase 0 foundations
+#
+# Three jobs:
+#   test         — build + unit/UI tests on macos-15 with Xcode 16
+#   spdx-header  — verify every .swift file begins with the SPDX MIT header
+#   format-check — swift format lint (architecture §4, §10)
+#
+# All three must pass before a PR can be merged (configure branch protection
+# in the GitHub repository settings — Settings → Branches → Add rule).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-progress runs on the same PR branch to save runner minutes.
+# Runs on main are never cancelled so the branch always has a final status.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # test — build the Xcode project and run all test targets
+  # ---------------------------------------------------------------------------
+  test:
+    name: Build & Test
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Pin Xcode 16 explicitly so the job does not silently drift when the
+      # runner image ships a newer Xcode in a future update.
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16"
+
+      # Emit tool versions into the log so failures are easier to diagnose.
+      - name: Show tool versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # TODO(phase-1): add actions/cache for ~/Library/Developer/Xcode/DerivedData
+      # and .build directories keyed on project.yml + Package.swift hashes.
+      # Cache overhead is not worth it in Phase 0 (< 5 min CI target is met without it).
+
+      # Destination rationale: we drop the OS version pin and let Xcode pick the
+      # latest available runtime. This avoids "requested simulator runtime not found"
+      # failures when the runner image ships 17.5 but we pinned 17.4 (or vice versa).
+      # "iPhone 16" is the baseline device Xcode 16 ships in its simulator set and
+      # covers our iOS 17+ deployment target.
+      - name: Build
+        run: |
+          xcodebuild \
+            -project OpenHL.xcodeproj \
+            -scheme OpenHL \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test (unit + UI)
+        run: |
+          xcodebuild \
+            -project OpenHL.xcodeproj \
+            -scheme OpenHL \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug \
+            test \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Run each local package's test suite directly via swift test so package-
+      # level test isolation is verified independently of the app host bundle.
+      - name: Test — OpenHLCore package
+        run: swift test --package-path Packages/OpenHLCore
+
+      - name: Test — HyperliquidAPI package
+        run: swift test --package-path Packages/HyperliquidAPI
+
+  # ---------------------------------------------------------------------------
+  # spdx-header — enforce architecture §10: first line of every .swift file
+  # must be exactly "// SPDX-License-Identifier: MIT"
+  # ---------------------------------------------------------------------------
+  spdx-header:
+    name: SPDX Header Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify SPDX headers
+        run: |
+          # Collect every .swift file outside generated/vendor directories.
+          # We exclude .build/, DerivedData/, and .git/ which are never
+          # source files we own.
+          MISSING=()
+          while IFS= read -r -d '' file; do
+            first_line=$(head -n 1 "$file")
+            if [ "$first_line" != "// SPDX-License-Identifier: MIT" ]; then
+              MISSING+=("$file")
+            fi
+          done < <(find . \
+            -name "*.swift" \
+            -not -path "./.build/*" \
+            -not -path "./.git/*" \
+            -not -path "*/DerivedData/*" \
+            -print0)
+
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "ERROR: The following .swift files are missing the SPDX MIT header."
+            echo "  Every .swift file must begin with: // SPDX-License-Identifier: MIT"
+            echo "  See docs/architecture.md §10 for the convention."
+            echo ""
+            for f in "${MISSING[@]}"; do
+              echo "  MISSING: $f"
+            done
+            exit 1
+          fi
+
+          echo "OK: all .swift files have the SPDX MIT header."
+
+  # ---------------------------------------------------------------------------
+  # format-check — lint Swift sources with the Apple swift format tool.
+  # Uses .swift-format at the repo root (4-space indent, 120-char line length).
+  # Architecture §4 mandates swift format over SwiftLint.
+  # ---------------------------------------------------------------------------
+  format-check:
+    name: Swift Format Lint
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16"
+
+      # "swift format" (space, not hyphen) is the invocation that ships with
+      # the Swift toolchain bundled in Xcode 16. We confirm it is present before
+      # running so the error is actionable if a future runner image changes this.
+      - name: Verify swift format is available
+        run: swift format --version
+
+      # Lint app sources and both local packages. The .swift-format config at
+      # the repo root (4-space indent, 120-char line length) is picked up
+      # automatically when the working directory is the repo root.
+      - name: swift format lint
+        run: |
+          swift format lint \
+            --strict \
+            --recursive \
+            OpenHL \
+            Packages

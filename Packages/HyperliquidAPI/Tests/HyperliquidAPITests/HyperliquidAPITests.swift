@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-import Testing
 import HyperliquidAPI
+import Testing
 
-@Test("Placeholder — HyperliquidAPI wiring proof")
-func placeholderTest() {
-    #expect(true)
+@Test("hyperliquidAPIVersion is a non-empty semver string")
+func hyperliquidAPIVersionIsValid() {
+    // Verify the constant is reachable and matches the Phase-0 placeholder value.
+    // This will be updated when the first real release is cut.
+    #expect(hyperliquidAPIVersion == "0.0.0")
+    #expect(!hyperliquidAPIVersion.isEmpty)
 }
