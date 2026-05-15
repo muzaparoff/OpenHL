@@ -92,6 +92,79 @@ Append-only. Newest entries at the bottom. Each entry: date, title, context, dec
 
 ---
 
+## 2026-05-15 — `Money` is a typealias for `Decimal`, not a newtype, in Phase 1
+
+**Context:** Phase 1 introduces money handling end-to-end. Options: (a) typealias `Money = Decimal`; (b) a single `Money` struct wrapping `Decimal`; (c) a family of newtypes (`USDValue`, `AssetSize`, `Price`, `PnL`, `Fee`).
+
+**Decision:** Typealias. `Money = Decimal` in `OpenHLCore/Money.swift`. No wrapping struct in v1.
+
+**Rationale:** Hyperliquid mixes several quantity kinds in one response (USD account value, asset position size, mark price, PnL, fees). A single `Money` newtype would lump them all together — no type-level safety, and a wrap/unwrap tax at every call site for no payoff. A family of newtypes is the genuinely useful design, but it is a non-trivial exercise (unit-of-measure tracking, conversion functions, comparable/arithmetic constraints across kinds) and Phase 1 does not do arithmetic across kinds. Phase 1 only reads, formats, and displays. `Decimal` already gives us no-floating-point-rounding, `Codable`, `Sendable`, `Hashable`, `Comparable`, and direct `Decimal.FormatStyle`. The typealias documents intent at use sites (`accountValue: Money`) without imposing a wrap tax. The hard rule against `Double`/`Float` on money paths is enforced by code review, not by the type system — which is the same enforcement we would need anyway with a newtype that exposes `.rawValue: Decimal`.
+
+**Alternatives considered:**
+- *Single `Money` newtype.* Rejected: type-soup; obscures the actual kinds; introduces a wrap/unwrap tax for no compile-time safety.
+- *Family of newtypes (`USDValue`, `AssetSize`, etc.).* Deferred, not rejected. Revisit if Phase 2/3 introduces meaningful cross-kind arithmetic (e.g. computing PnL as `(markPx - entryPx) * size`). At that point the design is worth doing properly.
+- *`Double`.* Rejected by CLAUDE.md and roadmap: no `Double` for money, end-to-end.
+
+---
+
+## 2026-05-15 — `AddressStore` lives in `HyperliquidAPI`, not `OpenHLCore`
+
+**Context:** The address-persistence protocol needs a home. `OpenHLCore` and `HyperliquidAPI` are both plausible: the `Address` type lives in `OpenHLCore` and the protocol traffics in `Address`; the only consumer is a view model that already imports `HyperliquidAPI` for the client.
+
+**Decision:** `AddressStore` lives in `HyperliquidAPI`. Same package as `HyperliquidClient`.
+
+**Rationale:** `OpenHLCore` is a pure-value-types leaf module — no I/O, no `Foundation` beyond `Date`/`Decimal`/`URL`/`UserDefaults` value types. A protocol whose concrete implementations do `UserDefaults` (today) and Keychain (potential future) is not pure; even though the protocol itself has no I/O dependency, co-locating it with its implementations is the convention we want. The Phase 1 consumer (the address-entry view model) already imports `HyperliquidAPI` for `HyperliquidClient`, so co-locating adds no new import edges. If a future consumer in a layer below `HyperliquidAPI` ever needed `AddressStore`, we would extract the protocol to `OpenHLCore` then — premature now.
+
+**Alternatives considered:**
+- *Put `AddressStore` in `OpenHLCore`.* Rejected: drags persistence concerns into the pure-value-types module; sets a precedent that "any protocol can go in Core" which erodes the leaf-module invariant.
+- *Create a third package `OpenHLPersistence`.* Rejected: one protocol and two implementations do not justify a package. Will reconsider if Phase 3+ adds SwiftData-backed snapshot caching.
+
+---
+
+## 2026-05-15 — No retry/backoff inside the REST client in Phase 1
+
+**Context:** `URLSessionHyperliquidClient` could implement an automatic retry policy on transient failures (offline, timeout, 5xx). Many production clients do.
+
+**Decision:** No retry inside the client. One attempt per call. Pull-to-refresh is the user's retry control. `waitsForConnectivity = true` remains on (one-shot wait inside the resource ceiling — not a retry).
+
+**Rationale:** Retries inside the client hide what is happening from the view model and the user. A user staring at a 45-second spinner on a flaky network is worse UX than a fast error with a "Try again" affordance. Retries also tangle with cancellation: when a user pulls to refresh again, should the in-flight retry chain be cancelled, restarted, or merged? Each answer has edge cases. By keeping retry out of the client we keep the cancellation contract crisp ("a cancelled task means a cancelled HTTP request, full stop"). Phase 3's WebSocket has a genuine reconnect/backoff need (long-lived connection, server-driven push); that gets its own state machine and is not precedent for the REST path.
+
+**Alternatives considered:**
+- *Exponential backoff with jitter, 3 attempts, on 5xx and timeout.* Rejected: doubles or triples time-to-error on real outages; tangles cancellation; the user can already retry by pulling to refresh.
+- *Single retry on timeout only.* Rejected: a special case is harder to reason about than no retry, and the cancellation tangle is the same.
+
+---
+
+## 2026-05-15 — `HyperliquidError` is closed and view-model-translated
+
+**Context:** Errors from a REST client can be exposed at many levels of abstraction: raw `URLError`/`DecodingError`, a wrapping enum that preserves underlying errors, or fully abstracted user-facing strings.
+
+**Decision:** `HyperliquidError` is a closed enum with six cases: `.offline`, `.timeout`, `.httpStatus(Int)`, `.decoding(underlying:)`, `.unexpectedResponse(reason:)`, `.transport(underlying:)`. View models translate these to a separate `ViewErrorState` enum (`offline`, `timeout`, `badRequest`, `serverError`, `unexpectedResponse`, `unknown`). Views switch on `ViewErrorState`.
+
+**Rationale:** Two distinct enums separate two distinct concerns. `HyperliquidError` is API-shape vocabulary — what went wrong at the transport/decode level. `ViewErrorState` is UI vocabulary — what we render and what action the user can take. Conflating them either pollutes the client with UI knowledge or pollutes the view with transport knowledge. Closed enums on both sides mean exhaustive `switch` at every translation point — adding a new case is a compile-time decision, not a silent fall-through. The `underlying:` payloads on `decoding` and `transport` preserve diagnostic info for `OSLog` without ever being shown to the user.
+
+**Alternatives considered:**
+- *Surface `URLError`/`DecodingError` directly.* Rejected: view models would have to know transport vocabulary; every new view duplicates the translation.
+- *Single `AppError` shared across layers.* Rejected: forces every layer to import every other layer's error vocabulary and erases the boundary between "what the API said" and "what we should tell the user."
+- *Open `Error` protocol with conformances.* Rejected: no exhaustive switch; new cases ship as silent fall-throughs to a default UI state.
+
+---
+
+## 2026-05-15 — `@DecimalString` property wrapper as the single money-decode path
+
+**Context:** Hyperliquid returns numbers as JSON strings (`"1234.5"`, `"-0.000123"`). The default `Decimal: Codable` conformance expects a JSON number token, not a string. Options: (a) per-DTO custom `init(from:)` that reads strings; (b) a `KeyedDecodingContainer` extension; (c) a property wrapper.
+
+**Decision:** Property wrapper `@DecimalString` (and `@OptionalDecimalString` for nullable fields) defined in `OpenHLCore`. Every money field on every DTO uses it.
+
+**Rationale:** A property wrapper is the smallest declaration that puts decoding semantics on the field itself, where a reviewer reads the field. A `KeyedDecodingContainer` extension still requires every DTO author to call the right helper at the right key — easy to forget, hard to grep for. Per-DTO `init(from:)` works but loses the DTO-as-plain-data property and adds boilerplate that scales linearly with DTO count. The wrapper also gives us a single place to enforce the rules (string-only token, no grouping separators, no leading `+`, locale-agnostic) and a single place to fix any bug we find. The cost — a `wrappedValue` indirection per field — is negligible.
+
+**Alternatives considered:**
+- *Per-DTO custom `init(from:)`.* Rejected: boilerplate; rule drift across DTOs.
+- *`KeyedDecodingContainer` extension.* Rejected: easy to call the wrong helper; not visible on the field.
+- *Custom `JSONDecoder` strategy via a global `dateDecodingStrategy`-style hook.* Rejected: no such hook exists for `Decimal`; a custom strategy would need a separate decoder per DTO and re-introduce the per-call discipline problem.
+
+---
+
 ## 2026-05-15 — MIT SPDX one-line header on every Swift source file
 
 **Context:** Open-source convention is to mark license at the file level so excerpted code travels with its license. Options range from no per-file header (rely on `LICENSE`) to multi-line copyright + license blocks.

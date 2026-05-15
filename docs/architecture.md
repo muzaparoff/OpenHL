@@ -188,3 +188,310 @@ Enforcement: a lightweight CI check greps for the SPDX line at the top of every 
 ## Status
 
 This document is v0 — the Phase 0 baseline. It will be revised in Phase 1 (networking detail, `Decimal` decoding rules), Phase 3 (concurrency model for live updates, reconnect state machine), and at v1.0 sign-off. Revisions append; do not silently rewrite history. Material changes get a `docs/decisions.md` entry.
+
+---
+
+# Phase 1 — networking, decoding, persistence, view-model pattern
+
+This section lands the shapes `ios-developer` will implement. Anything not codified here is up to the implementer; anything codified here is binding without a follow-up `docs/decisions.md` entry to revise it.
+
+Code-level signatures live in the package sources:
+- `Packages/OpenHLCore/Sources/OpenHLCore/*.swift`
+- `Packages/HyperliquidAPI/Sources/HyperliquidAPI/*.swift`
+
+Stubs throw `fatalError("Phase 1 ios-developer")`. Doc-comments on each declaration carry the contract. Read those alongside this section.
+
+---
+
+## 11. Networking layer
+
+### 11.1 `HyperliquidClient` protocol
+
+The protocol view models depend on. Constructor-injected. One method in Phase 1: `clearinghouseState(for:)`.
+
+```swift
+public protocol HyperliquidClient: Sendable {
+    func clearinghouseState(for user: Address) async throws -> ClearinghouseState
+    // TODO Phase 2: openOrders(for:) -> [OpenOrder]
+    // TODO Phase 2: userFills(for:) -> [Fill]
+}
+```
+
+Rules:
+- `async throws`. Errors are exclusively `HyperliquidError` (see 11.4).
+- `Sendable`. Conformers cross actor boundaries (constructed on the main actor in the composition root, held by `@MainActor` view models).
+- No method returns DTOs. The client maps wire DTOs to domain types inside the client; the rest of the app never sees a DTO.
+- Methods honor `Task.checkCancellation()` after the network call returns and before decoding, so a cancelled refresh doesn't waste CPU.
+
+### 11.2 Concrete implementation: `URLSessionHyperliquidClient`
+
+A `struct` (not an `actor`) with `Sendable` dependencies. `URLSession` is itself thread-safe and `Sendable`, so a struct suffices for Phase 1's pure-REST shape. (Phase 3 introduces an `actor` for the WebSocket; it does not replace this struct.)
+
+Configuration the struct owns:
+
+| Setting | Value | Why |
+|---|---|---|
+| `baseURL` | `https://api.hyperliquid.xyz` | Production endpoint. Injectable for tests. |
+| `timeoutIntervalForRequest` | 15 s | Foreground fetches; a snapshot endpoint should not take 60 s. |
+| `timeoutIntervalForResource` | 30 s | Ceiling that includes `waitsForConnectivity` waiting time. |
+| `waitsForConnectivity` | `true` | A foreground pull-to-refresh that races a 200 ms cell-to-WiFi handoff should succeed, not throw `.offline`. The resource ceiling still bounds it. |
+| `httpAdditionalHeaders` | `Content-Type: application/json`, `Accept: application/json` | Hyperliquid expects JSON. No custom `User-Agent`. |
+| `requestCachePolicy` | `.reloadIgnoringLocalCacheData` | Snapshot endpoints; cached responses are worse than no response. |
+| `httpShouldUsePipelining` | default | Not worth tuning at v1 volumes. |
+| `URLCache` | nil | We do not cache /info responses at the URLSession layer. SwiftData snapshots (post-v1) are the appropriate cache. |
+
+Two initializers:
+- Public production init: takes `baseURL` (defaulted) and `Clock` (defaulted to `SystemClock()`). Builds its own `URLSession` from a `URLSessionConfiguration` per the table above.
+- Public test-seam init: takes `baseURL`, a pre-built `URLSession`, and a `Clock`. Tests construct a configuration with a custom `URLProtocol` subclass in `protocolClasses` to stub responses (see 11.7).
+
+### 11.3 Request/response DTO conventions
+
+DTOs live in `Sources/HyperliquidAPI/DTOs/`. They mirror the wire format 1:1.
+
+Rules:
+- Type names suffixed with `DTO`. `internal` access — DTOs do not leak.
+- `Decodable, Sendable`. `Encodable` only when needed (request bodies, round-trip tests).
+- Every money field uses `@DecimalString` or `@OptionalDecimalString` (11.5). No `Double`, no `Float`, no `Decimal` decoded via default conformance — Hyperliquid sends strings.
+- `CodingKeys` only when the wire name is not a valid Swift identifier. Match wire field names exactly otherwise.
+- DTOs are dumb: no computed properties, no validation. Validation, branching, and shape-cleanup happen in the DTO -> domain mapper inside the client.
+- The mapper is a private static function or private extension method on the client. It throws `HyperliquidError.unexpectedResponse(reason:)` for documented-but-unexpected shapes (e.g. `leverage.type` that is neither `"cross"` nor `"isolated"`).
+
+Request encoding for `POST /info` is modeled as an `enum InfoRequest: Encodable, Sendable` with one case per request type. A custom `encode(to:)` flattens the case into the wire shape `{"type": "...", "user": "..."}`. This guarantees discriminator and parameters cannot drift apart.
+
+### 11.4 Typed error mapping
+
+`HyperliquidError` cases (defined in `HyperliquidError.swift`):
+
+| Case | Source | View-model state |
+|---|---|---|
+| `.offline` | `URLError.notConnectedToInternet`, `.networkConnectionLost`, `.dataNotAllowed` | `.error(.offline)` |
+| `.timeout` | `URLError.timedOut` | `.error(.timeout)` |
+| `.httpStatus(Int)` | HTTP response outside `200..<300` | `.error(.serverError)` for 5xx; `.error(.badRequest)` for 4xx |
+| `.decoding(underlying:)` | `DecodingError` from `JSONDecoder` | `.error(.unexpectedResponse)`; underlying error logged via `OSLog`, never shown |
+| `.unexpectedResponse(reason:)` | post-decode invariant violation | `.error(.unexpectedResponse)` |
+| `.transport(underlying:)` | any other `URLError` | `.error(.unknown)` |
+
+`Task.CancellationError` is not a `HyperliquidError`. Cancellation propagates as itself; view models catch and ignore (cancelled refreshes are not failures). The client must not wrap `CancellationError` into a `HyperliquidError`.
+
+View-model error states are a separate `enum ViewErrorState: Sendable, Equatable` exposed to the SwiftUI layer. The view model owns translation from `HyperliquidError` to `ViewErrorState`; the client never knows about UI states. Concrete cases the view model exposes for Phase 1:
+
+```swift
+enum ViewErrorState: Sendable, Equatable {
+    case offline
+    case timeout
+    case badRequest        // 4xx — the address may be malformed or rate-limited
+    case serverError       // 5xx — try again later
+    case unexpectedResponse // decode or invariant — file a bug
+    case unknown
+}
+```
+
+The address-entry validation error is a separate concern (`Address.ValidationError`) and renders inline; it never becomes a `ViewErrorState`.
+
+### 11.5 `Decimal` decoding rules
+
+The single rule: any JSON field that represents money is decoded via `@DecimalString` (or `@OptionalDecimalString` for nullable fields). A `Double` or `Float` on a money path is a code-review blocker.
+
+`@DecimalString` (in `OpenHLCore`):
+- Decodes from a JSON string token. Rejects numeric tokens.
+- Trims surrounding whitespace.
+- Accepts leading `-`. Rejects leading `+`. Rejects grouping separators. Accepts no decimal point or one.
+- Throws `DecodingError.dataCorruptedError` with a path-aware message on malformed input, so `HyperliquidError.decoding(underlying:)` carries useful context.
+- Locale-agnostic: parses with `.` as the decimal separator regardless of system locale.
+
+`@OptionalDecimalString` behaves identically but treats `null` and missing keys as `nil`.
+
+For one-off parsing outside `Codable` (tests, custom paths) call `DecimalParsing.parse(_:) -> Decimal?` with the same rules.
+
+### 11.6 Retry / backoff policy
+
+**Phase 1: no retry inside the client.** One attempt per call.
+
+Rationale:
+- Retries inside the client hide what is happening from the view model and from the user. A user staring at a spinner for 45 s on a flaky network is a worse experience than a fast error with a "Try again" affordance.
+- Retry policies tangle with cancellation. `pull-to-refresh` should cancel the previous in-flight call cleanly; a retry loop introduces a "should this retry start when the previous one is cancelled mid-retry?" question we do not need to answer.
+- Pull-to-refresh is the user's retry control. The view model exposes a `refresh()` async method; views drive it via the standard SwiftUI `.refreshable` modifier.
+
+`waitsForConnectivity = true` is not a retry — it is a one-shot wait inside the resource ceiling. That stays on.
+
+Phase 3 will introduce a reconnect/backoff state machine for the WebSocket. That is a different problem (long-lived connection, server-driven push) and gets its own design.
+
+### 11.7 Test fixtures and `URLProtocol` stubs
+
+Fixtures live in:
+
+```
+Packages/HyperliquidAPI/Tests/HyperliquidAPITests/Fixtures/
+  clearinghouseState_typical.json
+  clearinghouseState_empty.json          # no positions, zero balances
+  clearinghouseState_largeNegativePnL.json
+  clearinghouseState_isolatedLeverage.json
+  clearinghouseState_missingLiquidationPx.json
+  clearinghouseState_malformed_decimal.json   # for negative-path decoder tests
+```
+
+Loading: a `FixtureLoader` helper in `Tests/HyperliquidAPITests/Support/` reads files via `Bundle.module.url(forResource:withExtension:subdirectory:)`. The package manifest must declare `.process("Fixtures")` (or `.copy("Fixtures")`) on the test target's resources so they are bundled. The `ios-developer` updates `Package.swift` accordingly when wiring fixtures.
+
+For decoder unit tests against the DTOs and the DTO -> domain mapper, the test instantiates the mapper directly with the loaded JSON `Data`. No `URLSession`.
+
+For end-to-end client tests (request shape + response decode + error mapping), a `URLProtocol` subclass in `Support/` intercepts requests:
+- `StubURLProtocol` is registered via `URLSessionConfiguration.protocolClasses = [StubURLProtocol.self]` and the configuration is handed to `URLSessionHyperliquidClient`'s test-seam init.
+- Per-test setup installs a handler `(URLRequest) -> (HTTPURLResponse, Data?)` or `(URLRequest) -> Error`. The handler runs synchronously inside `URLProtocol.startLoading`.
+- The handler asserts on the request shape (URL, method, body decoded back into `InfoRequest` for round-trip verification) and returns the fixture data.
+
+Tests must be hermetic: no real network calls in any test target. CI enforces this implicitly — runners may have no network — but the rule is also a `qa-automation` review checkpoint.
+
+---
+
+## 12. `AddressStore` protocol
+
+Lives in `HyperliquidAPI`, not `OpenHLCore`. Rationale: `OpenHLCore` is a pure-value-types leaf with no I/O; a protocol whose concrete impl does `UserDefaults` (and may later do Keychain) is not pure. The Phase 1 consumer (the address-entry view model) already imports `HyperliquidAPI` for the client, so co-locating adds no import edges. (Logged as a decision.)
+
+```swift
+public protocol AddressStore: Sendable {
+    func load() -> Address?
+    func save(_ address: Address)
+    func clear()
+}
+```
+
+Synchronous. `UserDefaults` reads/writes are fast and lock-free at single-key scale; an `async` protocol would buy nothing.
+
+`load()` is forgiving: a stored value that no longer passes `Address` validation (older build wrote a different shape, manual edit on a development device, etc.) returns `nil` rather than crashing. The next `save` overwrites it.
+
+Concrete implementations:
+- `UserDefaultsAddressStore` — production. Takes a `UserDefaults` (defaults to `.standard`) so tests can inject a suite-backed instance. Storage key is `openhl.address`, exposed as a `public static let` so tests can pre-seed without depending on the struct.
+- `InMemoryAddressStore` — for tests. `final class` with an internal lock so cross-actor access from tests is safe. Initializer accepts an optional seed value.
+
+A future Keychain-backed implementation conforms to the same protocol; view code does not change.
+
+---
+
+## 13. View-model pattern for Phase 1
+
+### 13.1 Shape
+
+Every screen has a view model:
+
+```swift
+@MainActor
+@Observable
+final class PositionsViewModel {
+
+    enum State: Sendable, Equatable {
+        case idle
+        case loading
+        case loaded(ClearinghouseState)
+        case error(ViewErrorState, lastLoaded: ClearinghouseState?)
+    }
+
+    private(set) var state: State = .idle
+
+    private let client: any HyperliquidClient
+    private let address: Address
+    private let clock: any Clock
+
+    init(client: any HyperliquidClient, address: Address, clock: any Clock) {
+        self.client = client
+        self.address = address
+        self.clock = clock
+    }
+
+    func load() async { /* sets .loading, calls client, updates state */ }
+    func refresh() async { /* same as load(), preserves lastLoaded on error */ }
+}
+```
+
+Rules:
+- `@MainActor @Observable final class`. No `ObservableObject`, no `@Published`.
+- `state` is a single enum. Views switch on it. No separate `isLoading`/`error`/`data` booleans.
+- `.error` carries the last successfully-loaded snapshot, so the UI can keep showing old data dimmed while presenting the error banner. Pull-to-refresh produces an `.error(_, lastLoaded: X)` state on failure, not an `.error(_, lastLoaded: nil)` — `nil` is only for the cold-load error path.
+- View model `init` takes dependencies (`HyperliquidClient`, `Address`, `Clock`, possibly `AddressStore`). No default values, no factory methods, no static singletons.
+- `load()` and `refresh()` are `async` and `@MainActor`. They do not spawn `Task`s themselves. The view invokes them inside `.task` or `.refreshable`, which manage the `Task` lifetime.
+
+### 13.2 Cancellation
+
+- Views drive task lifetime via `.task { await viewModel.load() }`. SwiftUI cancels that task on view disappear.
+- A new `refresh()` started while a previous one is in flight cancels the previous via SwiftUI's `.refreshable` semantics — actually, `.refreshable` awaits the closure to completion, so by construction there is no overlap. The view model does not need an explicit cancellation token in Phase 1.
+- Inside `load()`/`refresh()`, the view model checks `Task.isCancelled` after the `await client.clearinghouseState(...)` returns and before mutating `state`, so a cancelled call cannot stomp a newer state. The client itself also honors cancellation (11.1).
+
+### 13.3 Pull-to-refresh
+
+The `PositionsView` uses `.refreshable { await viewModel.refresh() }`. That is the only mapping. The view model has no separate "is-refreshing" flag; the active state during refresh is the existing one (`.loaded` keeps rendering data; the system refresh control owns the spinner).
+
+### 13.4 Composition root
+
+`OpenHLApp.swift`:
+
+```swift
+@main
+struct OpenHLApp: App {
+    private let clock = SystemClock()
+    private let client: any HyperliquidClient
+    private let addressStore: any AddressStore
+
+    init() {
+        self.client = URLSessionHyperliquidClient(clock: clock)
+        self.addressStore = UserDefaultsAddressStore()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            RootView(client: client, addressStore: addressStore, clock: clock)
+        }
+    }
+}
+```
+
+`RootView` reads `addressStore.load()` to decide whether to show address entry or positions. It constructs the appropriate view model with the dependencies it received from the app. No environment-injected ambient services in Phase 1. No `@EnvironmentObject`.
+
+---
+
+## 14. Public API of `OpenHLCore` (Phase 1)
+
+Code lives in the package sources; doc-comments are the contract. Summary:
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `Address` | struct (value type) | Validated 0x+40hex wallet address. `Sendable`, `Hashable`, `Codable`. Throwing init + non-throwing failable init. |
+| `Address.ValidationError` | enum | `empty`, `missingPrefix`, `wrongLength(actual:)`, `nonHexCharacter`. |
+| `Money` | typealias for `Decimal` | Single typealias; no newtype in Phase 1. (Logged decision.) |
+| `@DecimalString` | property wrapper | Money decode/encode helper. Locale-agnostic. |
+| `@OptionalDecimalString` | property wrapper | Same, for nullable fields. |
+| `DecimalParsing.parse(_:)` | enum namespace | One-off parsing outside Codable. |
+| `MoneyFormatter` | enum namespace | `usd`, `signedUSD`, `signedPercent`, `decimal`. All take an explicit `Locale` defaulted to `.autoupdatingCurrent`. |
+| `Clock` protocol | protocol | `now() -> Date`. `Sendable`. |
+| `SystemClock` | struct | Production: returns `Date()`. |
+| `FixedClock` | final class | Test: settable, advance-by, internally synchronized. |
+
+Why a typealias and not a newtype for `Money`: Hyperliquid mixes account-USD, asset sizes, prices, PnL, fees in one response. A single `Money` newtype would be type-soup; a family of newtypes (`USDValue`, `AssetSize`, `Price`) is a real design exercise we do not need in Phase 1 (no arithmetic across kinds yet). The typealias documents intent at every use site without imposing a wrap/unwrap tax. Revisit if Phase 2/3 arithmetic justifies it.
+
+Why a custom `Clock` and not stdlib `Clock`: we need `Date` for display and `Date`-relative SwiftUI APIs. The stdlib protocol is built around `Duration` and adds ceremony with no payoff here.
+
+---
+
+## 15. Public API of `HyperliquidAPI` (Phase 1)
+
+| Type | Kind | Purpose |
+|---|---|---|
+| `HyperliquidClient` | protocol | View-model-facing API. Phase 1: `clearinghouseState(for:)`. |
+| `URLSessionHyperliquidClient` | struct | Production impl. Two inits (production / test seam). |
+| `HyperliquidError` | enum | `offline`, `timeout`, `httpStatus`, `decoding`, `unexpectedResponse`, `transport`. |
+| `ClearinghouseState` | struct (domain) | Account summary + positions + serverTime + fetchedAt. |
+| `ClearinghouseState.AccountSummary` | nested struct | USD aggregates. |
+| `ClearinghouseState.Position` | nested struct | One position; `Side`, `LeverageMode`. |
+| `InfoRequest` | enum (Encodable) | Discriminated POST /info body. Phase 1: `clearinghouseState(user:)`. |
+| `AddressStore` | protocol | Persistence. |
+| `UserDefaultsAddressStore` | struct | Production impl. |
+| `InMemoryAddressStore` | final class | Test impl. |
+
+DTOs (`ClearinghouseStateDTO`, etc.) are `internal` — they do not appear in the public API.
+
+TODO Phase 2: `openOrders(for:)`, `userFills(for:)`, the matching `InfoRequest` cases, their DTOs and domain models. Left as TODO comments in the source.
+
+---
+
+## Status
+
+This document is now at the Phase 1 baseline. Next revision is Phase 3 (WebSocket concurrency model, reconnect state machine).
+
