@@ -1,0 +1,142 @@
+name: OpenHL
+options:
+  bundleIdPrefix: com.openhl
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: en
+  defaultConfig: Debug
+  xcodeVersion: "16"
+  groupSortPosition: top
+  generateEmptyDirectories: true
+  transitivelyLinkDependencies: false
+
+packages:
+  OpenHLCore:
+    path: Packages/OpenHLCore
+  HyperliquidAPI:
+    path: Packages/HyperliquidAPI
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 83HPSY452Y
+    SWIFT_VERSION: 5.0
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+  configs:
+    Debug:
+      SWIFT_TREAT_WARNINGS_AS_ERRORS: "NO"
+    Release:
+      SWIFT_TREAT_WARNINGS_AS_ERRORS: "YES"
+
+targets:
+  OpenHL:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: OpenHL
+        excludes:
+          - "Resources/Info.plist"
+    resources:
+      - path: OpenHL/Resources/Assets.xcassets
+    info:
+      path: OpenHL/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: open-hl
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    dependencies:
+      - package: OpenHLCore
+      - package: HyperliquidAPI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openhl.app
+        PRODUCT_NAME: OpenHL
+        DEVELOPMENT_TEAM: 83HPSY452Y
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_LANGUAGE_VERSION: "6"
+        SWIFT_VERSION: "6"
+        OTHER_SWIFT_FLAGS: "-strict-concurrency=complete"
+        INFOPLIST_FILE: OpenHL/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Debug:
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: "NO"
+        Release:
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: "YES"
+
+  OpenHLTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: OpenHLTests
+    dependencies:
+      - target: OpenHL
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openhl.app.tests
+        DEVELOPMENT_TEAM: 83HPSY452Y
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_LANGUAGE_VERSION: "6"
+        SWIFT_VERSION: "6"
+        OTHER_SWIFT_FLAGS: "-strict-concurrency=complete"
+        GENERATE_INFOPLIST_FILE: "YES"
+      configs:
+        Debug:
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: "NO"
+        Release:
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: "YES"
+
+  OpenHLUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: OpenHLUITests
+    dependencies:
+      - target: OpenHL
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openhl.app.uitests
+        DEVELOPMENT_TEAM: 83HPSY452Y
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_LANGUAGE_VERSION: "6"
+        SWIFT_VERSION: "6"
+        TEST_TARGET_NAME: OpenHL
+        GENERATE_INFOPLIST_FILE: "YES"
+      configs:
+        Debug:
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: "NO"
+        Release:
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: "YES"
+
+schemes:
+  OpenHL:
+    build:
+      targets:
+        OpenHL: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - OpenHLTests
+        - OpenHLUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

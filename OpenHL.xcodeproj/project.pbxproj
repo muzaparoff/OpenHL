@@ -1,0 +1,659 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4EF572F39642D6667BA45B9D /* OpenHLTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5683494F253481A2F7A4112C /* OpenHLTests.swift */; };
+		7D649E8D711C7246BC3198B0 /* HyperliquidAPI in Frameworks */ = {isa = PBXBuildFile; productRef = F52F6BB20556C40C86398C95 /* HyperliquidAPI */; };
+		7F4780A25BCFFF246E4FA91C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEC406F79407BFE1364BFDB /* ContentView.swift */; };
+		B3225B12956F858898A85224 /* OpenHLCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7239735FCF556C26368125C0 /* OpenHLCore */; };
+		E222BEB8479B48FECC20F30C /* OpenHLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A6C935F53ECAA4C658FB15D /* OpenHLUITests.swift */; };
+		ECC660761D019BECC56E9F2E /* OpenHLApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4217EF35642805A967ED7490 /* OpenHLApp.swift */; };
+		FB75C4AA05BF84AB17BCA30F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2A34E97FC8298BD529A0107 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		8814C5590D859947DC379082 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5A4ACCA8F717F917181CD18A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8AEC6E72F171059035620B6E;
+			remoteInfo = OpenHL;
+		};
+		C72D07E1EFE1770F8CEB2009 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5A4ACCA8F717F917181CD18A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8AEC6E72F171059035620B6E;
+			remoteInfo = OpenHL;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		12A96F9A2D9F33780149C0DD /* HyperliquidAPI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HyperliquidAPI; path = Packages/HyperliquidAPI; sourceTree = SOURCE_ROOT; };
+		173ACC27F2CD1FFAFFF329F7 /* OpenHLUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OpenHLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CEC406F79407BFE1364BFDB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		230F5390BC451DEB3EAF6D64 /* OpenHLCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenHLCore; path = Packages/OpenHLCore; sourceTree = SOURCE_ROOT; };
+		4217EF35642805A967ED7490 /* OpenHLApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenHLApp.swift; sourceTree = "<group>"; };
+		5683494F253481A2F7A4112C /* OpenHLTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenHLTests.swift; sourceTree = "<group>"; };
+		5DBFA4CE17F351C84B982C15 /* OpenHL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpenHL.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7554D660B1271667F80164C8 /* OpenHLTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OpenHLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A6C935F53ECAA4C658FB15D /* OpenHLUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenHLUITests.swift; sourceTree = "<group>"; };
+		F2A34E97FC8298BD529A0107 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3C3B79772B608C75BEAA02E1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3225B12956F858898A85224 /* OpenHLCore in Frameworks */,
+				7D649E8D711C7246BC3198B0 /* HyperliquidAPI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		01E0F14E45FC1D581C7AAD13 = {
+			isa = PBXGroup;
+			children = (
+				96A446EE504B7611FF75BB82 /* OpenHL */,
+				7EF793190FBE23FC95F85B68 /* OpenHLTests */,
+				385566195352F9C9B557654F /* OpenHLUITests */,
+				9023782BD2AD93A87C9BC1C7 /* Packages */,
+				0F91164D62E34DAABD6CCAE6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0F91164D62E34DAABD6CCAE6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5DBFA4CE17F351C84B982C15 /* OpenHL.app */,
+				7554D660B1271667F80164C8 /* OpenHLTests.xctest */,
+				173ACC27F2CD1FFAFFF329F7 /* OpenHLUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		32DDA445713BE2D6D47020FE /* Orders */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Orders;
+			sourceTree = "<group>";
+		};
+		385566195352F9C9B557654F /* OpenHLUITests */ = {
+			isa = PBXGroup;
+			children = (
+				9A6C935F53ECAA4C658FB15D /* OpenHLUITests.swift */,
+			);
+			path = OpenHLUITests;
+			sourceTree = "<group>";
+		};
+		55531380BEFB70BC2727D7E1 /* Positions */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Positions;
+			sourceTree = "<group>";
+		};
+		7EF793190FBE23FC95F85B68 /* OpenHLTests */ = {
+			isa = PBXGroup;
+			children = (
+				5683494F253481A2F7A4112C /* OpenHLTests.swift */,
+			);
+			path = OpenHLTests;
+			sourceTree = "<group>";
+		};
+		9023782BD2AD93A87C9BC1C7 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				12A96F9A2D9F33780149C0DD /* HyperliquidAPI */,
+				230F5390BC451DEB3EAF6D64 /* OpenHLCore */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		96A446EE504B7611FF75BB82 /* OpenHL */ = {
+			isa = PBXGroup;
+			children = (
+				F1DCE85156EA4E31F87EEA98 /* Resources */,
+				D47E26F27707E93B36419926 /* Screens */,
+				1CEC406F79407BFE1364BFDB /* ContentView.swift */,
+				4217EF35642805A967ED7490 /* OpenHLApp.swift */,
+			);
+			path = OpenHL;
+			sourceTree = "<group>";
+		};
+		A2B91265CE9E2234C6377348 /* Fills */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Fills;
+			sourceTree = "<group>";
+		};
+		C583900E4696E03F3FFA7777 /* AddressEntry */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = AddressEntry;
+			sourceTree = "<group>";
+		};
+		D47E26F27707E93B36419926 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				C583900E4696E03F3FFA7777 /* AddressEntry */,
+				A2B91265CE9E2234C6377348 /* Fills */,
+				32DDA445713BE2D6D47020FE /* Orders */,
+				55531380BEFB70BC2727D7E1 /* Positions */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+		F1DCE85156EA4E31F87EEA98 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F2A34E97FC8298BD529A0107 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		77B77291FDE3025A7CFF49E4 /* OpenHLTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 550B18F943F838D17DE60104 /* Build configuration list for PBXNativeTarget "OpenHLTests" */;
+			buildPhases = (
+				C3BAD9135A50B137BF272D0D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				407D13FF39FCAC957169CCB8 /* PBXTargetDependency */,
+			);
+			name = OpenHLTests;
+			packageProductDependencies = (
+			);
+			productName = OpenHLTests;
+			productReference = 7554D660B1271667F80164C8 /* OpenHLTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8AEC6E72F171059035620B6E /* OpenHL */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 404960608B6B3D196ADA464A /* Build configuration list for PBXNativeTarget "OpenHL" */;
+			buildPhases = (
+				8F3515AED191EF327BDE5681 /* Sources */,
+				7ED5AD5516DBF992FDAF886F /* Resources */,
+				3C3B79772B608C75BEAA02E1 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenHL;
+			packageProductDependencies = (
+				7239735FCF556C26368125C0 /* OpenHLCore */,
+				F52F6BB20556C40C86398C95 /* HyperliquidAPI */,
+			);
+			productName = OpenHL;
+			productReference = 5DBFA4CE17F351C84B982C15 /* OpenHL.app */;
+			productType = "com.apple.product-type.application";
+		};
+		ED1539F1C4134D7163D13768 /* OpenHLUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B18DA916EAD1A1D4FDC5220F /* Build configuration list for PBXNativeTarget "OpenHLUITests" */;
+			buildPhases = (
+				D9CA901D977BF6EEEABB4DF1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				405C0ABFC2787827DD5EE68C /* PBXTargetDependency */,
+			);
+			name = OpenHLUITests;
+			packageProductDependencies = (
+			);
+			productName = OpenHLUITests;
+			productReference = 173ACC27F2CD1FFAFFF329F7 /* OpenHLUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5A4ACCA8F717F917181CD18A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					77B77291FDE3025A7CFF49E4 = {
+						DevelopmentTeam = 83HPSY452Y;
+						ProvisioningStyle = Automatic;
+					};
+					8AEC6E72F171059035620B6E = {
+						DevelopmentTeam = 83HPSY452Y;
+						ProvisioningStyle = Automatic;
+					};
+					ED1539F1C4134D7163D13768 = {
+						DevelopmentTeam = 83HPSY452Y;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 8AEC6E72F171059035620B6E;
+					};
+				};
+			};
+			buildConfigurationList = 4151D669F23C32644199240D /* Build configuration list for PBXProject "OpenHL" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 01E0F14E45FC1D581C7AAD13;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6A4F724FBDFB0C65C9F62FF7 /* XCLocalSwiftPackageReference "Packages/HyperliquidAPI" */,
+				3EE4432E86D8BB0E94727A30 /* XCLocalSwiftPackageReference "Packages/OpenHLCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0F91164D62E34DAABD6CCAE6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8AEC6E72F171059035620B6E /* OpenHL */,
+				77B77291FDE3025A7CFF49E4 /* OpenHLTests */,
+				ED1539F1C4134D7163D13768 /* OpenHLUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7ED5AD5516DBF992FDAF886F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB75C4AA05BF84AB17BCA30F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8F3515AED191EF327BDE5681 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7F4780A25BCFFF246E4FA91C /* ContentView.swift in Sources */,
+				ECC660761D019BECC56E9F2E /* OpenHLApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C3BAD9135A50B137BF272D0D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4EF572F39642D6667BA45B9D /* OpenHLTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9CA901D977BF6EEEABB4DF1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E222BEB8479B48FECC20F30C /* OpenHLUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		405C0ABFC2787827DD5EE68C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8AEC6E72F171059035620B6E /* OpenHL */;
+			targetProxy = C72D07E1EFE1770F8CEB2009 /* PBXContainerItemProxy */;
+		};
+		407D13FF39FCAC957169CCB8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8AEC6E72F171059035620B6E /* OpenHL */;
+			targetProxy = 8814C5590D859947DC379082 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0AD20F96DBD33387379D7ED7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		28C76939884EE68995219D71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				OTHER_SWIFT_FLAGS = "-strict-concurrency=complete";
+				PRODUCT_BUNDLE_IDENTIFIER = com.openhl.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_LANGUAGE_VERSION = 6;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OpenHL.app/OpenHL";
+			};
+			name = Debug;
+		};
+		415505171CC527A4AF9C284B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				OTHER_SWIFT_FLAGS = "-strict-concurrency=complete";
+				PRODUCT_BUNDLE_IDENTIFIER = com.openhl.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_LANGUAGE_VERSION = 6;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OpenHL.app/OpenHL";
+			};
+			name = Release;
+		};
+		5A2F9058E7E763934EE55178 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.openhl.app.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_LANGUAGE_VERSION = 6;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = OpenHL;
+			};
+			name = Debug;
+		};
+		6BE3910EC0AEF8052994533D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		7E5173F94B29462CD1A64608 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				INFOPLIST_FILE = OpenHL/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_SWIFT_FLAGS = "-strict-concurrency=complete";
+				PRODUCT_BUNDLE_IDENTIFIER = com.openhl.app;
+				PRODUCT_NAME = OpenHL;
+				SDKROOT = iphoneos;
+				SWIFT_LANGUAGE_VERSION = 6;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		850A6BE71F8039A38C3FF868 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.openhl.app.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_LANGUAGE_VERSION = 6;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = OpenHL;
+			};
+			name = Release;
+		};
+		B5164CE8757C57BB8EFE74F3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 83HPSY452Y;
+				INFOPLIST_FILE = OpenHL/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_SWIFT_FLAGS = "-strict-concurrency=complete";
+				PRODUCT_BUNDLE_IDENTIFIER = com.openhl.app;
+				PRODUCT_NAME = OpenHL;
+				SDKROOT = iphoneos;
+				SWIFT_LANGUAGE_VERSION = 6;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		404960608B6B3D196ADA464A /* Build configuration list for PBXNativeTarget "OpenHL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5164CE8757C57BB8EFE74F3 /* Debug */,
+				7E5173F94B29462CD1A64608 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4151D669F23C32644199240D /* Build configuration list for PBXProject "OpenHL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0AD20F96DBD33387379D7ED7 /* Debug */,
+				6BE3910EC0AEF8052994533D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		550B18F943F838D17DE60104 /* Build configuration list for PBXNativeTarget "OpenHLTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				28C76939884EE68995219D71 /* Debug */,
+				415505171CC527A4AF9C284B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B18DA916EAD1A1D4FDC5220F /* Build configuration list for PBXNativeTarget "OpenHLUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A2F9058E7E763934EE55178 /* Debug */,
+				850A6BE71F8039A38C3FF868 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		3EE4432E86D8BB0E94727A30 /* XCLocalSwiftPackageReference "Packages/OpenHLCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/OpenHLCore;
+		};
+		6A4F724FBDFB0C65C9F62FF7 /* XCLocalSwiftPackageReference "Packages/HyperliquidAPI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/HyperliquidAPI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7239735FCF556C26368125C0 /* OpenHLCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenHLCore;
+		};
+		F52F6BB20556C40C86398C95 /* HyperliquidAPI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HyperliquidAPI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 5A4ACCA8F717F917181CD18A /* Project object */;
+}

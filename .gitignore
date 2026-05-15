@@ -28,11 +28,16 @@ xcuserdata/
 *.dSYM
 
 ## Swift Package Manager
+# Ignore per-package build artifacts and resolved files (local packages are sources, not dependencies)
 .build/
-Packages/
+Packages/**/.build/
+Packages/**/Package.resolved
+# Ignore top-level Package.resolved for local packages; keep the app project's resolved file
 Package.pins
-Package.resolved
-*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+# The app project's Package.resolved lives inside the xcworkspace shared data and is checked in
+# (per Apple guidance for apps with locked dependency trees).
+# Exclude the legacy pattern but not the xcworkspace swiftpm folder:
+# *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/ is NOT excluded — we want it tracked.
 
 ## fastlane
 fastlane/report.xml
