@@ -1,0 +1,17 @@
+{
+  "marginSummary": {
+    "accountValue": "not_a_number",
+    "totalNtlPos": "0",
+    "totalRawUsd": "0",
+    "totalMarginUsed": "0"
+  },
+  "crossMarginSummary": {
+    "accountValue": "0",
+    "totalNtlPos": "0",
+    "totalRawUsd": "0",
+    "totalMarginUsed": "0"
+  },
+  "withdrawable": "0",
+  "assetPositions": [],
+  "time": 1715770321000
+}

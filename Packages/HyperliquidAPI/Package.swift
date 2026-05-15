@@ -29,6 +29,9 @@ let package = Package(
         .testTarget(
             name: "HyperliquidAPITests",
             dependencies: ["HyperliquidAPI", "OpenHLCore"],
+            resources: [
+                .copy("Fixtures")
+            ],
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]

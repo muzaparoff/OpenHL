@@ -1,0 +1,35 @@
+{
+  "marginSummary": {
+    "accountValue": "25000.00",
+    "totalNtlPos": "5000.00",
+    "totalRawUsd": "25000.00",
+    "totalMarginUsed": "250.00"
+  },
+  "crossMarginSummary": {
+    "accountValue": "25000.00",
+    "totalNtlPos": "5000.00",
+    "totalRawUsd": "25000.00",
+    "totalMarginUsed": "250.00"
+  },
+  "withdrawable": "24750.00",
+  "assetPositions": [
+    {
+      "type": "oneWay",
+      "position": {
+        "coin": "SOL",
+        "szi": "50.0",
+        "entryPx": "100.00",
+        "positionValue": "5000.00",
+        "unrealizedPnl": "75.00",
+        "returnOnEquity": "0.03",
+        "liquidationPx": null,
+        "marginUsed": "250.00",
+        "leverage": {
+          "type": "cross",
+          "value": 20
+        }
+      }
+    }
+  ],
+  "time": 1715774400000
+}
