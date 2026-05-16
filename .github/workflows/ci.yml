@@ -52,15 +52,15 @@ jobs:
 
       # Destination rationale: we drop the OS version pin and let Xcode pick the
       # latest available runtime. This avoids "requested simulator runtime not found"
-      # failures when the runner image ships 17.5 but we pinned 17.4 (or vice versa).
-      # "iPhone 16" is the baseline device Xcode 16 ships in its simulator set and
-      # covers our iOS 17+ deployment target.
+      # failures when the runner image ships a slightly different OS than we pinned.
+      # "iPhone 17 Pro" is the canonical simulator for this project — used in CI,
+      # local development, and manual QA. Defined once here so we don't drift.
       - name: Build
         run: |
           xcodebuild \
             -project OpenHL.xcodeproj \
             -scheme OpenHL \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -configuration Debug \
             build \
             CODE_SIGNING_ALLOWED=NO
@@ -70,7 +70,7 @@ jobs:
           xcodebuild \
             -project OpenHL.xcodeproj \
             -scheme OpenHL \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             -configuration Debug \
             test \
             CODE_SIGNING_ALLOWED=NO

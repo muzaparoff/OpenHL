@@ -15,42 +15,20 @@ private let logger = Logger(subsystem: "xyz.hyperliquid.openhl", category: "Hype
 /// Configuration:
 /// - `timeoutIntervalForRequest`: 15 seconds (per-request).
 /// - `timeoutIntervalForResource`: 30 seconds (whole-resource ceiling).
-/// - `waitsForConnectivity`: `true`. Foreground fetches that race a
-///   transient network change get a chance to succeed instead of
-///   immediately throwing `.offline`. The resource ceiling still bounds
-///   it.
+/// - `waitsForConnectivity`: `true`.
 /// - `httpAdditionalHeaders`: `Content-Type: application/json`,
-///   `Accept: application/json`. No `User-Agent` customization in v1
-///   (the default URLSession UA carries no identifying info we control,
-///   and Hyperliquid does not require one).
-/// - Cache policy: `.reloadIgnoringLocalCacheData` for `/info` POST
-///   requests. We always want fresh state; cached responses on a snapshot
-///   endpoint are worse than no response.
+///   `Accept: application/json`.
+/// - Cache policy: `.reloadIgnoringLocalCacheData` (snapshot endpoints,
+///   no caching).
 ///
-/// Retry / backoff: **none in Phase 1.** The client makes one attempt;
-/// transient failures throw and the view model surfaces an error state
-/// with a "Try again" affordance. Rationale: retries inside the client
-/// hide what is really happening from the view model and from the user,
-/// double the time-to-error on real outages, and complicate cancellation.
-/// Pull-to-refresh is the user's retry control. (Phase 3's WebSocket
-/// will have its own reconnect/backoff machine — that is a different
-/// problem with a different shape.)
+/// Retry / backoff: **none in Phase 1.** Pull-to-refresh is the user's
+/// retry control. Phase 3's WebSocket has its own reconnect machine.
 public struct URLSessionHyperliquidClient: HyperliquidClient {
 
-    /// The base URL. Default: `https://api.hyperliquid.xyz`. Override only
-    /// in tests via the convenience initializer that takes a
-    /// `URLProtocol` class array (or simply a different base URL).
     public let baseURL: URL
-
-    /// The `URLSession` used for all requests. Injected so tests can pass
-    /// a session with `URLProtocol` stubs registered.
     public let session: URLSession
-
-    /// The clock, used to stamp `ClearinghouseState.fetchedAt`.
     public let clock: any Clock
 
-    /// Production initializer. Constructs a session with the documented
-    /// configuration.
     public init(
         baseURL: URL = URL(string: "https://api.hyperliquid.xyz")!,
         clock: any Clock = SystemClock()
@@ -71,9 +49,7 @@ public struct URLSessionHyperliquidClient: HyperliquidClient {
         self.clock = clock
     }
 
-    /// Test/seam initializer. Pass a pre-configured `URLSession` whose
-    /// `URLSessionConfiguration.protocolClasses` includes a stub
-    /// `URLProtocol` subclass that serves fixture JSON.
+    /// Test/seam initializer.
     public init(
         baseURL: URL,
         session: URLSession,
@@ -84,21 +60,75 @@ public struct URLSessionHyperliquidClient: HyperliquidClient {
         self.clock = clock
     }
 
-    public func clearinghouseState(for user: Address) async throws -> ClearinghouseState {
-        let request = InfoRequest.clearinghouseState(user: user)
-        let fetchedAt = clock.now()
+    /// Hard cap on `userFills(for:)` results.
+    public static let userFillsCap: Int = 200
 
-        let urlRequest = try buildRequest(body: request)
+    // MARK: - Public API
+
+    public func clearinghouseState(for user: Address) async throws -> ClearinghouseState {
+        let fetchedAt = clock.now()
+        let dto: ClearinghouseStateDTO = try await perform(.clearinghouseState(user: user))
+        return try Self.mapDTOtoDomain(dto, fetchedAt: fetchedAt)
+    }
+
+    public func openOrders(for user: Address) async throws -> [OpenOrder] {
+        let dtos: [OpenOrderDTO] = try await perform(.openOrders(user: user))
+        return try dtos.map { try Self.mapOpenOrderDTO($0) }
+    }
+
+    public func userFills(for user: Address) async throws -> [Fill] {
+        let dtos: [UserFillDTO] = try await perform(.userFills(user: user))
+        let fills = try dtos.map { try Self.mapUserFillDTO($0) }
+        return Array(fills.prefix(URLSessionHyperliquidClient.userFillsCap))
+    }
+
+    public func markets() async throws -> [Market] {
+        let dto: MetaAndAssetCtxsDTO = try await perform(.metaAndAssetCtxs)
+        return dto.toMarkets()
+    }
+
+    public func candles(
+        coin: String,
+        interval: CandleInterval,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> [Candle] {
+        let dtos: [CandleDTO] = try await perform(
+            .candleSnapshot(
+                coin: coin,
+                interval: interval,
+                startTime: startTime,
+                endTime: endTime
+            )
+        )
+        return dtos.toCandles()
+    }
+
+    public func portfolio(for user: Address) async throws -> Portfolio {
+        let dto: PortfolioDTO = try await perform(.portfolio(user: user))
+        return dto.toDomain()
+    }
+
+    // MARK: - Shared transport / decode pipeline
+
+    /// One pipeline for every `POST /info` call. Builds the request,
+    /// performs it, validates status, decodes the typed response.
+    /// `HyperliquidError` is the only thing this ever throws (other than
+    /// `CancellationError`, which propagates untouched so structured
+    /// concurrency can clean up).
+    private func perform<Response: Decodable>(
+        _ infoRequest: InfoRequest
+    ) async throws -> Response {
+        let urlRequest = try buildRequest(body: infoRequest)
 
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: urlRequest)
         } catch let error as URLError {
-            throw mapURLError(error)
+            throw Self.mapURLError(error)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
-            if error is CancellationError {
-                throw error
-            }
             throw HyperliquidError.transport(underlying: error)
         }
 
@@ -107,25 +137,22 @@ public struct URLSessionHyperliquidClient: HyperliquidClient {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HyperliquidError.unexpectedResponse(reason: "Non-HTTP response received")
         }
-
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw HyperliquidError.httpStatus(httpResponse.statusCode)
         }
 
-        let dto: ClearinghouseStateDTO
+        let decoded: Response
         do {
-            dto = try JSONDecoder().decode(ClearinghouseStateDTO.self, from: data)
+            decoded = try JSONDecoder().decode(Response.self, from: data)
         } catch {
-            logger.error("Decoding error: \(error, privacy: .public)")
+            logger.error(
+                "\(String(describing: Response.self), privacy: .public) decode error: \(error, privacy: .public)")
             throw HyperliquidError.decoding(underlying: error)
         }
 
         try Task.checkCancellation()
-
-        return try mapDTOtoDomain(dto, fetchedAt: fetchedAt)
+        return decoded
     }
-
-    // MARK: - Private helpers
 
     private func buildRequest(body: some Encodable) throws -> URLRequest {
         let url = baseURL.appendingPathComponent("info")
@@ -140,26 +167,99 @@ public struct URLSessionHyperliquidClient: HyperliquidClient {
         } catch {
             throw HyperliquidError.unexpectedResponse(reason: "Failed to encode request: \(error)")
         }
-
         return request
     }
 
-    private func mapURLError(_ error: URLError) -> HyperliquidError {
+    private static func mapURLError(_ error: URLError) -> HyperliquidError {
         switch error.code {
         case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
             return .offline
         case .timedOut:
             return .timeout
         case .cancelled:
-            // Let the CancellationError propagate normally; if URLError.cancelled
-            // arrives here, treat it as transport so the call site can handle it.
             return .transport(underlying: error)
         default:
             return .transport(underlying: error)
         }
     }
 
-    private func mapDTOtoDomain(
+    // MARK: - DTO → domain mappers (pure, hence `static`)
+
+    private static func mapOpenOrderDTO(_ dto: OpenOrderDTO) throws -> OpenOrder {
+        let side: OpenOrder.Side
+        switch dto.side {
+        case "B": side = .buy
+        case "A": side = .sell
+        default:
+            throw HyperliquidError.unexpectedResponse(
+                reason: "openOrders: unknown side '\(dto.side)'"
+            )
+        }
+
+        let orderType: OpenOrder.OrderType
+        // orderType is absent for plain limit orders; default to .limit when nil.
+        switch dto.orderType {
+        case nil, "Limit": orderType = .limit
+        case "Trigger": orderType = .trigger
+        case "Stop Limit": orderType = .stopLimit
+        case "Stop Market": orderType = .stopMarket
+        case "Take Profit Limit": orderType = .takeProfitLimit
+        case "Take Profit Market": orderType = .takeProfitMarket
+        default:
+            let raw = dto.orderType!
+            logger.info(
+                "openOrders: unrecognized orderType '\(raw, privacy: .public)' — using .unknown fallback"
+            )
+            orderType = .unknown(raw)
+        }
+
+        let placedAt = Date(timeIntervalSince1970: TimeInterval(dto.timestamp) / 1000.0)
+
+        return OpenOrder(
+            oid: dto.oid,
+            coin: dto.coin,
+            side: side,
+            limitPrice: dto.limitPx,
+            size: dto.sz,
+            origSize: dto.origSz,
+            orderType: orderType,
+            reduceOnly: dto.reduceOnly ?? false,
+            triggerPrice: dto.triggerPx,
+            placedAt: placedAt
+        )
+    }
+
+    private static func mapUserFillDTO(_ dto: UserFillDTO) throws -> Fill {
+        let side: Fill.Side
+        switch dto.side {
+        case "B": side = .buy
+        case "A": side = .sell
+        default:
+            throw HyperliquidError.unexpectedResponse(
+                reason: "userFills: unknown side '\(dto.side)'"
+            )
+        }
+
+        let executedAt = Date(timeIntervalSince1970: TimeInterval(dto.time) / 1000.0)
+
+        return Fill(
+            tid: dto.tid,
+            oid: dto.oid,
+            coin: dto.coin,
+            side: side,
+            direction: dto.dir,
+            price: dto.px,
+            size: dto.sz,
+            fee: dto.fee,
+            feeToken: dto.feeToken,
+            closedPnL: dto.closedPnl,
+            crossed: dto.crossed,
+            hash: dto.hash,
+            executedAt: executedAt
+        )
+    }
+
+    private static func mapDTOtoDomain(
         _ dto: ClearinghouseStateDTO,
         fetchedAt: Date
     ) throws -> ClearinghouseState {
@@ -181,10 +281,8 @@ public struct URLSessionHyperliquidClient: HyperliquidClient {
 
             let leverageMode: ClearinghouseState.Position.LeverageMode
             switch pos.leverage.type {
-            case "cross":
-                leverageMode = .cross(pos.leverage.value)
-            case "isolated":
-                leverageMode = .isolated(pos.leverage.value)
+            case "cross": leverageMode = .cross(pos.leverage.value)
+            case "isolated": leverageMode = .isolated(pos.leverage.value)
             default:
                 throw HyperliquidError.unexpectedResponse(
                     reason: "Unknown leverage type: '\(pos.leverage.type)'"

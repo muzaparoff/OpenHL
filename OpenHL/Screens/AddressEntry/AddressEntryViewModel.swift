@@ -7,16 +7,6 @@ import OpenHLCore
 
 private let logger = Logger(subsystem: "xyz.hyperliquid.openhl", category: "AddressEntry")
 
-/// View-facing error states for the address entry screen.
-enum ViewErrorState: Sendable, Equatable {
-    case offline
-    case timeout
-    case badRequest
-    case serverError(Int)
-    case unexpectedResponse
-    case unknown
-}
-
 @MainActor
 @Observable
 final class AddressEntryViewModel {
@@ -60,6 +50,17 @@ final class AddressEntryViewModel {
         self.addressStore = addressStore
         self.clock = clock
         self.existingAddress = existingAddress
+        #if DEBUG
+            // UI-test seam: when OPENHL_UI_TEST_PRESEED_ADDRESS is set, pre-fill
+            // the field so the test does not depend on XCUITest's flaky
+            // typeText keystroke simulation on monospaced fields. Production
+            // is untouched (env var is empty in real launches).
+            let preseed = ProcessInfo.processInfo.environment["OPENHL_UI_TEST_PRESEED_ADDRESS"] ?? ""
+            if !preseed.isEmpty {
+                self.addressText = preseed
+                return
+            }
+        #endif
         self.addressText = existingAddress?.rawValue ?? ""
     }
 
@@ -170,20 +171,6 @@ final class AddressEntryViewModel {
     }
 
     private func viewErrorState(from error: HyperliquidError) -> ViewErrorState {
-        switch error {
-        case .offline:
-            return .offline
-        case .timeout:
-            return .timeout
-        case .httpStatus(let code):
-            if code >= 500 {
-                return .serverError(code)
-            }
-            return .badRequest
-        case .decoding, .unexpectedResponse:
-            return .unexpectedResponse
-        case .transport:
-            return .unknown
-        }
+        ViewErrorState(error)
     }
 }

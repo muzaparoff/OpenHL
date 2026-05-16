@@ -17,6 +17,95 @@ final class OpenHLUITests: XCTestCase {
     }
 }
 
+// MARK: - Phase 2 tab navigation
+//
+// NOTE (qa-automation): These tests require:
+//   1. ios-developer to implement the three-tab shell (Positions / Orders / Fills).
+//   2. UITestStubClient to support the following stub keys:
+//      - "tab_shell_stub": seeds the address and returns non-empty data for all
+//        three endpoints so each tab shows at least one row of content.
+//        Suggested ios-developer contract in UITestStubClient.swift:
+//          case "tab_shell_stub":
+//            clearinghouseState → makeSingleLong()
+//            openOrders        → [one BTC limit order row]
+//            userFills         → [one ETH close-short fill row]
+//        The exact static text that the Orders and Fills tabs expose must match
+//        the accessibility identifiers below. Update the assertions if the text
+//        labels change.
+//   3. The tab bar items must have stable accessibility identifiers or labels:
+//        Positions tab: "Positions"
+//        Orders tab:    "Orders"
+//        Fills tab:     "Fills"
+//
+// When the injection point and tab shell land, remove the XCTSkip call.
+
+final class TabNavigationUITests: XCTestCase {
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
+    /// Three-tab shell renders and each tab shows characteristic content.
+    ///
+    /// Stub contract key: "tab_shell_stub"
+    /// - Positions tab: "Account value" label must exist (from PositionsView header).
+    /// - Orders tab: at least one row; "BTC" static text must exist.
+    /// - Fills tab: at least one row; "ETH" static text must exist.
+    func testThreeTabShellRendersAndEachTabHasContent() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["OPENHL_UI_TEST_STUB"] = "tab_shell_stub"
+        app.launch()
+
+        // --- Positions tab (default) ---
+        let accountValueLabel = app.staticTexts["Account value"]
+        XCTAssertTrue(
+            accountValueLabel.waitForExistence(timeout: 5), "Account value header must exist on Positions tab")
+
+        // --- Orders tab ---
+        let ordersTab = app.tabBars.buttons["Orders"]
+        XCTAssertTrue(ordersTab.exists, "Orders tab must exist in tab bar")
+        ordersTab.tap()
+
+        let btcOrderText = app.staticTexts["BTC"]
+        XCTAssertTrue(btcOrderText.waitForExistence(timeout: 5), "BTC order row must exist on Orders tab")
+
+        // --- Fills tab ---
+        let fillsTab = app.tabBars.buttons["Fills"]
+        XCTAssertTrue(fillsTab.exists, "Fills tab must exist in tab bar")
+        fillsTab.tap()
+
+        let ethFillText = app.staticTexts["ETH"]
+        XCTAssertTrue(ethFillText.waitForExistence(timeout: 5), "ETH fill row must exist on Fills tab")
+
+        // --- Navigate back to Positions ---
+        let positionsTab = app.tabBars.buttons["Positions"]
+        XCTAssertTrue(positionsTab.exists, "Positions tab must exist in tab bar")
+        positionsTab.tap()
+        XCTAssertTrue(
+            accountValueLabel.waitForExistence(timeout: 3), "Positions tab content must reappear after tab switch")
+    }
+
+    /// Verify the existing Positions happy-path test still passes when the
+    /// tab shell is present. "Account value" must appear on the Positions tab.
+    /// This test mirrors testEntryToLoadedHappyPath in AddressEntryUITests
+    /// and acts as a regression guard for any tab-shell restructuring that
+    /// might move the account-value label.
+    func testPositionsTabStillShowsAccountValue() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["OPENHL_UI_TEST_STUB"] = "tab_shell_stub"
+        app.launch()
+
+        let accountValueLabel = app.staticTexts["Account value"]
+        XCTAssertTrue(
+            accountValueLabel.waitForExistence(timeout: 5),
+            "Account value header must be visible on the Positions tab after the tab shell is introduced"
+        )
+
+        let btcRow = app.staticTexts["BTC"]
+        XCTAssertTrue(btcRow.waitForExistence(timeout: 3), "BTC position row must still appear on Positions tab")
+    }
+}
+
 // MARK: - Phase 1 critical paths
 
 // NOTE (qa-automation): The entry → loaded happy-path UI test below requires

@@ -1,0 +1,17 @@
+[
+  {
+    "coin": "BTC-USD",
+    "side": "A",
+    "px": "55000.00",
+    "sz": "0.2500",
+    "fee": "0.00",
+    "feeToken": "USDC",
+    "time": 1715774300000,
+    "tid": 7000001,
+    "oid": 6000001,
+    "closedPnl": "-2500.00",
+    "dir": "Liquidated Long",
+    "crossed": true,
+    "hash": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  }
+]

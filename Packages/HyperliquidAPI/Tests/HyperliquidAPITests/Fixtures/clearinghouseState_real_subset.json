@@ -1,0 +1,134 @@
+{
+  "marginSummary": {
+    "accountValue": "5331.284211",
+    "totalNtlPos": "53088.84397",
+    "totalRawUsd": "-29673.880739",
+    "totalMarginUsed": "2676.834126"
+  },
+  "crossMarginSummary": {
+    "accountValue": "5331.284211",
+    "totalNtlPos": "53088.84397",
+    "totalRawUsd": "-29673.880739",
+    "totalMarginUsed": "2676.834126"
+  },
+  "crossMaintenanceMarginUsed": "1338.417062",
+  "withdrawable": "0.0",
+  "assetPositions": [
+    {
+      "type": "oneWay",
+      "position": {
+        "coin": "BTC",
+        "szi": "0.18211",
+        "leverage": {
+          "type": "cross",
+          "value": 40
+        },
+        "entryPx": "78133.8",
+        "positionValue": "14165.97268",
+        "unrealizedPnl": "-62.98011",
+        "returnOnEquity": "-0.1770477727",
+        "liquidationPx": "39873.0925765412",
+        "marginUsed": "354.149317",
+        "maxLeverage": 40,
+        "cumFunding": {
+          "allTime": "1.285821",
+          "sinceOpen": "-0.349394",
+          "sinceChange": "0.0"
+        }
+      }
+    },
+    {
+      "type": "oneWay",
+      "position": {
+        "coin": "ETH",
+        "szi": "12.0631",
+        "leverage": {
+          "type": "cross",
+          "value": 25
+        },
+        "entryPx": "2180.81",
+        "positionValue": "26160.03866",
+        "unrealizedPnl": "-147.38467",
+        "returnOnEquity": "-0.1400599634",
+        "liquidationPx": "1591.8389884043",
+        "marginUsed": "1046.401546",
+        "maxLeverage": 25,
+        "cumFunding": {
+          "allTime": "-3.344809",
+          "sinceOpen": "0.001082",
+          "sinceChange": "0.0"
+        }
+      }
+    },
+    {
+      "type": "oneWay",
+      "position": {
+        "coin": "DOGE",
+        "szi": "-43419.0",
+        "leverage": {
+          "type": "cross",
+          "value": 10
+        },
+        "entryPx": "0.114417",
+        "positionValue": "4701.84351",
+        "unrealizedPnl": "266.03656",
+        "returnOnEquity": "0.5355132496",
+        "liquidationPx": "0.2578487348",
+        "marginUsed": "470.184351",
+        "maxLeverage": 10,
+        "cumFunding": {
+          "allTime": "-2.618271",
+          "sinceOpen": "-2.618271",
+          "sinceChange": "0.11545"
+        }
+      }
+    },
+    {
+      "type": "oneWay",
+      "position": {
+        "coin": "HYPE",
+        "szi": "92.04",
+        "leverage": {
+          "type": "cross",
+          "value": 10
+        },
+        "entryPx": "41.5586",
+        "positionValue": "3720.99312",
+        "unrealizedPnl": "-104.06166",
+        "returnOnEquity": "-0.2720527312",
+        "liquidationPx": null,
+        "marginUsed": "372.099312",
+        "maxLeverage": 10,
+        "cumFunding": {
+          "allTime": "0.577857",
+          "sinceOpen": "0.083304",
+          "sinceChange": "0.0"
+        }
+      }
+    },
+    {
+      "type": "oneWay",
+      "position": {
+        "coin": "ZEC",
+        "szi": "-8.9",
+        "leverage": {
+          "type": "cross",
+          "value": 10
+        },
+        "entryPx": "558.4883",
+        "positionValue": "4339.996",
+        "unrealizedPnl": "630.5504",
+        "returnOnEquity": "1.2685736119",
+        "liquidationPx": "1217.2681695024",
+        "marginUsed": "433.9996",
+        "maxLeverage": 10,
+        "cumFunding": {
+          "allTime": "-2.230656",
+          "sinceOpen": "-2.230656",
+          "sinceChange": "-0.018874"
+        }
+      }
+    }
+  ],
+  "time": 1778926307554
+}

@@ -54,10 +54,10 @@ struct PositionsView: View {
                     .font(.headline)
             }
             ToolbarItem(placement: .topBarLeading) {
-                Text(viewModel.address.rawValue.truncated(maxLength: 12))
+                Text((viewModel.address?.rawValue ?? "").truncatedMiddle(maxLength: 12))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel("Wallet address \(viewModel.address.rawValue)")
+                    .accessibilityLabel("Wallet address \((viewModel.address?.rawValue ?? ""))")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -70,6 +70,18 @@ struct PositionsView: View {
         }
         .task {
             await viewModel.load()
+        }
+        .onChange(of: viewModel.state) { _, newState in
+            // Foreground alert evaluation with the connected wallet's
+            // account value. Markets are empty here — the Markets tab
+            // handles coin-price rules; this path handles wallet-value rules.
+            if case .loaded(let snapshot) = newState {
+                AlertScheduler.shared.evaluate(
+                    markets: [],
+                    accountValue: snapshot.summary.accountValue,
+                    now: snapshot.fetchedAt
+                )
+            }
         }
         .sheet(isPresented: $showSettings) {
             settingsSheet
@@ -232,35 +244,8 @@ struct PositionsView: View {
     // MARK: - Error banner (inline, refresh failure)
 
     private func errorBanner(errorState: ViewErrorState) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(.orange)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(errorBannerTitle(errorState))
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Button("Try again") {
-                    Task { await viewModel.retry() }
-                }
-                .font(.subheadline)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Error: \(errorBannerTitle(errorState))")
-    }
-
-    private func errorBannerTitle(_ state: ViewErrorState) -> String {
-        switch state {
-        case .offline: return "No internet connection."
-        case .timeout: return "Request timed out."
-        case .serverError(let code): return "Server error (HTTP \(code))."
-        case .badRequest: return "Request rejected."
-        case .unexpectedResponse: return "Unexpected API response."
-        case .unknown: return "Could not refresh."
+        ErrorBannerView(errorState: errorState) {
+            await viewModel.retry()
         }
     }
 
@@ -284,82 +269,19 @@ struct PositionsView: View {
     // MARK: - Full-page error view
 
     private func fullPageErrorView(errorState: ViewErrorState) -> some View {
-        let (symbol, title, message) = errorContent(errorState)
-        return VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: symbol)
-                .font(.system(size: 56))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-            Text(title)
-                .font(.title3)
-                .fontWeight(.semibold)
-                .multilineTextAlignment(.center)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            Button("Try again") {
-                Task { await viewModel.retry() }
-            }
-            .buttonStyle(.bordered)
-
-            if case .unexpectedResponse = errorState {
-                Link(
-                    "If this persists, please file an issue on GitHub.",
-                    destination: URL(string: "https://github.com/open-hl/open-hl/issues")!
-                )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            }
-            Spacer()
+        ErrorStateView(
+            errorState: errorState,
+            titleOverride: unexpectedResponseTitle(errorState)
+        ) {
+            await viewModel.retry()
         }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .contain)
     }
 
-    private func errorContent(_ state: ViewErrorState) -> (String, String, String) {
-        switch state {
-        case .offline:
-            return (
-                "wifi.slash",
-                "No internet connection",
-                "Connect and pull down to refresh."
-            )
-        case .timeout:
-            return (
-                "clock.badge.exclamationmark",
-                "Request timed out",
-                "Hyperliquid may be slow.\nPull down or tap to try again."
-            )
-        case .serverError(let code):
-            return (
-                "exclamationmark.circle",
-                "Hyperliquid is unavailable",
-                "The server returned an error (HTTP \(code)). Try again in a moment."
-            )
-        case .badRequest:
-            return (
-                "exclamationmark.circle",
-                "Request rejected",
-                "The server rejected the request. Try again."
-            )
-        case .unexpectedResponse:
-            return (
-                "xmark.circle",
-                "Could not read account data",
-                "The API returned a response the app did not recognize. This may be a temporary API change."
-            )
-        case .unknown:
-            return (
-                "exclamationmark.triangle",
-                "Could not load account",
-                "An unexpected error occurred. Check your connection and try again."
-            )
+    private func unexpectedResponseTitle(_ state: ViewErrorState) -> String? {
+        if case .unexpectedResponse = state {
+            return "Could not read account data"
         }
+        return nil
     }
 
     // MARK: - Settings sheet
@@ -369,7 +291,7 @@ struct PositionsView: View {
             List {
                 Section("WALLET ADDRESS") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(viewModel.address.rawValue)
+                        Text((viewModel.address?.rawValue ?? ""))
                             .font(.body.monospaced())
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -400,6 +322,7 @@ struct PositionsView: View {
                         destination: URL(string: "https://github.com/open-hl/open-hl")!
                     )
                 }
+
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Settings")
@@ -661,25 +584,14 @@ struct PositionRowView: View {
     }
 }
 
-// MARK: - String truncation helper
-
-extension String {
-    fileprivate func truncated(maxLength: Int) -> String {
-        guard count > maxLength else { return self }
-        let half = maxLength / 2 - 1
-        return "\(prefix(half + 2))\u{2026}\(suffix(half))"
-    }
-}
-
 // MARK: - Preview
 
 #Preview {
     NavigationStack {
         PositionsView(
-            viewModel: PositionsViewModel(
+            viewModel: .positions(
                 client: PreviewHyperliquidClient(),
-                address: Address(validating: "0x0000000000000000000000000000000000000001")!,
-                clock: SystemClock()
+                address: Address(validating: "0x0000000000000000000000000000000000000001")!
             ),
             client: PreviewHyperliquidClient(),
             addressStore: InMemoryAddressStore(),

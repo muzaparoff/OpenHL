@@ -345,4 +345,10 @@ struct URLSessionClientTests {
             #expect(body["user"] == testAddress.rawValue)
         }
     }
+
+    // NOTE: Phase2ClientTests (openOrders + userFills) is a *nested* suite defined
+    // in Phase2DecodingTests.swift so that it shares this parent @Suite(.serialized)
+    // and thus serializes against all Phase 1 tests above. Nesting guarantees that
+    // only one @Test across all nested suites runs at a time, preventing races on
+    // the process-global StubURLProtocol.handler.
 }

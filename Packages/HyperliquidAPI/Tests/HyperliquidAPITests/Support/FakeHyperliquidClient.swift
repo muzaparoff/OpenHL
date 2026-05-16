@@ -15,11 +15,44 @@ final class FakeHyperliquidClient: HyperliquidClient, @unchecked Sendable {
     /// forgot to configure the fake.
     var result: Result<ClearinghouseState, HyperliquidError> = .failure(.offline)
 
+    /// The result to return from the next `openOrders` call.
+    var openOrdersResult: Result<[OpenOrder], HyperliquidError> = .failure(.offline)
+
+    /// The result to return from the next `userFills` call.
+    var userFillsResult: Result<[Fill], HyperliquidError> = .failure(.offline)
+
+    /// The result to return from the next `markets` call.
+    var marketsResult: Result<[Market], HyperliquidError> = .failure(.offline)
+
+    /// Number of times `markets` was called.
+    private(set) var marketsCallCount: Int = 0
+
+    /// The result to return from the next `candles` call.
+    var candlesResult: Result<[Candle], HyperliquidError> = .failure(.offline)
+
+    /// The result to return from the next `portfolio` call.
+    var portfolioResult: Result<Portfolio, HyperliquidError> = .failure(.offline)
+
+    /// Number of times `portfolio` was called.
+    private(set) var portfolioCallCount: Int = 0
+
+    /// Last `candles` arguments received, or nil if never called.
+    private(set) var lastCandlesArgs: (coin: String, interval: CandleInterval, startTime: Date, endTime: Date)?
+
+    /// Number of times `candles` was called.
+    private(set) var candlesCallCount: Int = 0
+
     /// The address passed to the most recent call, or `nil` if never called.
     private(set) var lastQueriedAddress: Address?
 
     /// Number of times `clearinghouseState` was called.
     private(set) var callCount: Int = 0
+
+    /// Number of times `openOrders` was called.
+    private(set) var openOrdersCallCount: Int = 0
+
+    /// Number of times `userFills` was called.
+    private(set) var userFillsCallCount: Int = 0
 
     /// Optional delay (in nanoseconds) to simulate network latency.
     var artificialDelay: UInt64 = 0
@@ -31,6 +64,55 @@ final class FakeHyperliquidClient: HyperliquidClient, @unchecked Sendable {
             try await Task.sleep(nanoseconds: artificialDelay)
         }
         return try result.get()
+    }
+
+    func openOrders(for user: Address) async throws -> [OpenOrder] {
+        lastQueriedAddress = user
+        openOrdersCallCount += 1
+        if artificialDelay > 0 {
+            try await Task.sleep(nanoseconds: artificialDelay)
+        }
+        return try openOrdersResult.get()
+    }
+
+    func userFills(for user: Address) async throws -> [Fill] {
+        lastQueriedAddress = user
+        userFillsCallCount += 1
+        if artificialDelay > 0 {
+            try await Task.sleep(nanoseconds: artificialDelay)
+        }
+        return try userFillsResult.get()
+    }
+
+    func markets() async throws -> [Market] {
+        marketsCallCount += 1
+        if artificialDelay > 0 {
+            try await Task.sleep(nanoseconds: artificialDelay)
+        }
+        return try marketsResult.get()
+    }
+
+    func candles(
+        coin: String,
+        interval: CandleInterval,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> [Candle] {
+        candlesCallCount += 1
+        lastCandlesArgs = (coin, interval, startTime, endTime)
+        if artificialDelay > 0 {
+            try await Task.sleep(nanoseconds: artificialDelay)
+        }
+        return try candlesResult.get()
+    }
+
+    func portfolio(for user: Address) async throws -> Portfolio {
+        lastQueriedAddress = user
+        portfolioCallCount += 1
+        if artificialDelay > 0 {
+            try await Task.sleep(nanoseconds: artificialDelay)
+        }
+        return try portfolioResult.get()
     }
 }
 

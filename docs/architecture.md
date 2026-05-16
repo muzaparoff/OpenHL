@@ -687,3 +687,370 @@ Tests must remain hermetic (no real network). The same rule from §11.7 binds.
 
 This document is now at the Phase 2 baseline. Next revision is Phase 3 (WebSocket concurrency model, reconnect state machine, shared live store).
 
+---
+
+# Phase 3c — Expanded coin-detail timelines + Custom date range
+
+This section pins the shape of the chart-timeline change. `ios-developer` implements the view layer (picker chrome, date-picker sheet, Apply button wiring) against the types declared here.
+
+Code-level signatures live in:
+- `Packages/HyperliquidAPI/Sources/HyperliquidAPI/Candle.swift` — `userFacing`, `bestFit(for:)`
+- `OpenHL/Screens/CoinDetail/CoinDetailViewModel.swift` — `Mode`, `Mode.Preset`, `setMode(_:)`, `validate(customRange:now:)`
+
+---
+
+## 23. Coin-detail interval picker
+
+### 23.1 What changed and why
+
+Phase 3b shipped four user-facing intervals (`1h / 4h / 1d / 1w`). User feedback (and the reality of how people read price charts) wanted both shorter-than-1h precision and longer-than-1w horizons. Phase 3c expands the picker to **1h / 1D / 1W / 1M / 1y / Custom** — five presets plus a sheet-driven custom date range.
+
+`.fourHour` drops out of `CandleInterval.userFacing` (the enum case stays — it remains a valid query granularity and is still part of the Custom-mode `bestFit` ladder). It sat awkwardly between the hourly and daily views: with 1D now also surfaced as a preset, 4h had no clear job. Users who genuinely want a 4-hour view can land on it via Custom mode (any span between 2 and 30 days clamps to `.fourHour`).
+
+### 23.2 New `userFacing` selection
+
+```swift
+public static let userFacing: [CandleInterval] = [
+    .oneHour, .oneDay, .oneWeek,
+]
+```
+
+**Note:** `userFacing` is no longer the source of truth for the picker. The picker is driven by `CoinDetailViewModel.Mode.Preset.allCases` (five entries, including the two `.oneDay`-backed presets `oneMonth` / `oneYear` which need distinct labels and lookbacks). `userFacing` survives as the list of *unique granularities* surfaced in the picker — useful for any future code that asks "which `CandleInterval` values does v1 expose to the user." If those two consumers ever diverge further, we collapse `userFacing` and treat `Mode.Preset` as the single source.
+
+### 23.3 `CoinDetailViewModel.Mode` shape
+
+```swift
+enum Mode: Sendable, Equatable {
+    case standardInterval(Preset)
+    case customRange(DateInterval)
+
+    enum Preset: String, Sendable, CaseIterable, Identifiable, Hashable {
+        case oneHour, oneDay, oneWeek, oneMonth, oneYear
+        var interval: CandleInterval { … }
+        var lookback: TimeInterval { … }
+        var label: String { … }
+    }
+}
+```
+
+**Why this shape vs. (a) `var interval: CandleInterval` + `var customRange: DateInterval?` or (b) two separate view models:**
+
+- **(a) two stored properties.** Allows ill-formed combinations — `customRange` set but `interval` not updated, or vice-versa. The view code has to nominate one as authoritative or carry guard logic in every read site. An enum makes the two modes mutually exclusive at the type level and pattern-matchable in a single `switch` — the compiler enforces both branches are handled wherever mode is consumed (chart label, x-axis date format, fetch params, picker selection).
+- **(b) two view models.** Would duplicate the entire `State` machine, the fetch path, the error mapping, and the `lastLoaded` plumbing for a screen that already exists. Mode-switching would also have to thread `market`/`client`/`clock` through a parent and discard one VM's prior bars on every switch anyway (they're at the wrong granularity). The duplication-vs-conditional trade is decisively in favour of one VM.
+
+**Why a nested `Preset` enum rather than parameterizing `.standardInterval` with `(CandleInterval, lookback:)`:**
+
+The "1M" (30 days of `.oneDay`) and "1y" (365 days of `.oneDay`) entries both reuse `.oneDay`. A `(CandleInterval, lookback)` tuple would allow ill-formed values (e.g. `.oneWeek` with a 30-second lookback) and force the label to be derived from the lookback by hand. `Preset` is a closed five-value enum: the compiler enumerates the segmented-picker entries, the label/lookback/interval are co-located, and `allCases` drives the picker without a hand-maintained array.
+
+**Property compatibility:** `viewModel.interval` survives as a computed property returning `mode.interval`. Existing view code that reads `viewModel.interval` (e.g. the x-axis label switch in `CoinDetailView`) keeps compiling unchanged. Existing call sites that *set* `viewModel.interval` are replaced with `viewModel.setMode(.standardInterval(.oneHour))`. Phase 3c migrates the one such site in the picker.
+
+### 23.4 `CandleInterval.bestFit(for: DateInterval)`
+
+Pure function on `CandleInterval`. No state, no clock, no allocations beyond the span calculation. Defined in `Candle.swift`.
+
+| Span (`range.duration`)  | Returned interval | Approx bar count |
+|--------------------------|-------------------|------------------|
+| ≤ 2 days                 | `.oneHour`        | ≤ 48             |
+| ≤ 30 days                | `.fourHour`       | ≤ 180            |
+| ≤ 180 days               | `.oneDay`         | ≤ 180            |
+| ≤ 2 years (≤ 730 days)   | `.oneWeek`        | ≤ 104            |
+| > 2 years                | `.oneDay`         | (caller clamps)  |
+
+Boundaries are inclusive at the upper end (`≤` not `<`). The function never returns `.oneMonth`, `.threeDay`, or any sub-hour granularity: the ladder is deliberately coarse so the user picking a wider window can't accidentally trigger a 5-minute query that decimates the API response. The bestFit table is *the* contract for Custom mode — `ios-developer` does not invent a different granularity-for-span mapping in the view.
+
+### 23.5 Validation rules
+
+```swift
+enum CustomRangeError: Error, Sendable, Equatable {
+    case endBeforeStart
+    case endInFuture
+    case spanTooLarge
+}
+
+static let maxCustomSpan: TimeInterval = 60 * 60 * 24 * 365 * 3   // 3 years
+
+static func validate(customRange range: DateInterval, now: Date) throws
+```
+
+Rules:
+- **`end >= start`** — `DateInterval`'s own initializer permits zero-length ranges; we reject `end < start` ourselves so we can throw a distinct error rather than rely on `DateInterval`'s nullable failable init.
+- **`end <= now`** — future-dated candles are nonsensical; Hyperliquid would return an empty array. Reject at validation time so the picker can disable the Apply button immediately.
+- **`range.duration <= maxCustomSpan` (3 years)** — at the `bestFit` ladder's coarsest `.oneWeek` granularity, 3 years is ~156 bars (under the 500-bar cap). Spans larger than 3 years force `bestFit` onto `.oneDay`, where the API would silently truncate to its most recent ~500 bars and the chart would render with a misleading time domain. 3 years also matches `CandleInterval.oneMonth.defaultLookback` — it's the longest horizon we've already validated.
+
+Validation is **pure** and **synchronous** (`static func`). The date-picker sheet calls it before tapping Apply to surface inline errors; `setMode(_:)` does not re-validate (it would have to surface failure through a throw, complicating the picker-binding shape). The contract: callers that pass un-validated ranges to `setMode(.customRange(...))` get whatever Hyperliquid returns for that window, which may be empty or truncated. Validation is a UI affordance, not a safety net.
+
+### 23.6 Refresh / load behaviour in Custom mode
+
+- `load()`/`refresh()`/`retry()` all dispatch through the same `fetch(preservingPrior:)` path; only the `(start, end)` derivation changes per mode.
+- **Standard mode:** `start = clock.now() - preset.lookback`, `end = clock.now()`. The window rolls forward on every fetch — pull-to-refresh on a 1h-preset chart at 3:00 shows different bars than the same fetch at 3:05. This is the v1 behaviour and we keep it.
+- **Custom mode:** `start = range.start`, `end = range.end` — verbatim. The window is **fixed** to the user's exact selection. Pull-to-refresh on a Custom-mode chart at 3:00 and at 3:05 returns the same bars (modulo Hyperliquid backfilling a still-open candle). No `defaultLookback` substitution, no rolling. If the user wants "last 6 days," they pick Custom with `end = now`; if they want "Mar 1 to Mar 7," they pick those exact dates and refresh will keep that exact window.
+- **Mode switches** discard prior bars (`state = .loading`, `preservingPrior: nil`). Bars at one granularity look wrong on a chart axis labeled for another; preserving them would produce a momentary visual lie.
+
+### 23.7 What the view layer is *not* allowed to do
+
+- Compute its own `bestFit` granularity from a date range. The function lives on `CandleInterval` for a reason — it must be testable by `qa-automation` independent of any view.
+- Hold a `CandleInterval` separately from `Mode`. The picker binds to `Mode` via `setMode(_:)`; the view reads granularity via the derived `viewModel.interval`.
+- Bypass `validate(customRange:now:)`. The Apply button is gated on validation; an un-validated path is a bug, not a feature.
+
+### 23.8 Test fixtures qa-automation should capture
+
+A real-API decoder test for `.oneDay` over a 365-day lookback (the new "1y" preset) is not yet in the fixtures bank. `Phase3RealDataDecodingTests` covers 1h / 4h / 1d (90-day) / 1w. The 1d preset's *bar count* changes (30 bars for "1M", 365 bars for "1y"), but the wire format does not — the existing `candleSnapshot_btc_1d_real` fixture already exercises the decoder. No new wire-format fixture is strictly necessary for Phase 3c.
+
+What *is* needed and is `qa-automation`'s job:
+- A unit test of `CandleInterval.bestFit(for:)` across the boundary spans (2d, 2d+1s, 30d, 30d+1s, 180d, 730d, > 730d). Pure function; no fixtures.
+- A unit test of `CoinDetailViewModel.validate(customRange:now:)` for each error case and the happy path. Uses `FixedClock`.
+- A test of `CoinDetailViewModel` that flips `mode` between `.standardInterval(.oneHour)` and `.customRange(...)` and asserts the fetch is called with the right `(coin, interval, startTime, endTime)` via `FakeHyperliquidClient.lastCandlesArgs`. No network.
+
+The per-memory rule that a real-API fixture decoder test must run before any simulator install still binds: those tests are in `Phase3RealDataDecodingTests` and already cover the new presets' granularities. No change to that contract for Phase 3c.
+
+---
+
+# Phase 3d — Favorite coins pinned to top of Markets
+
+This section pins the shape of the favorites change. `ios-developer` implements the view wiring (star button, section headers, view-model observation loop) against the types declared here.
+
+Code-level signatures live in:
+- `Packages/OpenHLCore/Sources/OpenHLCore/FavoriteCoinsStore.swift` — protocol, `UserDefaultsFavoriteCoinsStore`, `InMemoryFavoriteCoinsStore`
+- `OpenHL/Screens/Markets/MarketsViewModel.swift` — favorites-aware sort closure
+- `OpenHL/Components/MarketRowView.swift` — star toggle wiring (already-stubbed params)
+
+---
+
+## 24. Favorite coins (pinned-to-top Markets sort)
+
+### 24.1 Data shape: `Set<String>` of coin symbols
+
+Favorites are coin symbols (`"BTC"`, `"ETH"`, …), stored as `Set<String>`. Not `[Address]` because favorites are a UI preference, not a per-wallet preference — the same pinned set follows the user across any wallet address they enter. Not a richer struct (`FavoriteCoin { symbol, pinnedAt }`) because Phase 3d ships only binary pinned/unpinned state; ordering within the pinned section is alphabetical by coin, not insertion-order. If a later phase wants "most-recently-pinned first," that gets its own decision entry and a struct upgrade.
+
+`Set` (not `[String]`) because membership is the dominant operation: `isFavorite(coin)` is called once per row on every Markets render. `O(1)` set contains, with no de-dup discipline at write time.
+
+### 24.2 Package placement: `OpenHLCore`
+
+`FavoriteCoinsStore` lives in `OpenHLCore`, not `HyperliquidAPI`. Rationale:
+
+- Favorites have nothing to do with the Hyperliquid API. They never travel over the wire, never reach a DTO, and the server has no concept of "favorite." Co-locating with `HyperliquidClient` would import a UI preference into a package that exists to model transport.
+- `AddressStore` lives in `HyperliquidAPI` because it traffics in `Address` and may grow a Keychain variant (§12). Favorites have neither property: the type is a plain `String`, and there is no plausible future implementation that wants Keychain.
+- `OpenHLCore` already exposes value-store-flavored utilities (`Clock`, `MoneyFormatter`, decoder helpers). A `Sendable` protocol with `Foundation`-only implementations sits naturally there.
+
+The package's leaf-module invariant (no SwiftUI, no SwiftData, no `URLSession` business logic) holds: this file imports only `Foundation`.
+
+### 24.3 Sort algorithm
+
+Formal definition. Given the input `markets: [Market]` and the current `favorites: Set<String>`, the favorites-aware sort partitions and orders as follows:
+
+```
+favoritesSection = { m in markets where favorites.contains(m.coin) },
+                   sorted by m.coin ascending (alphabetical)
+
+restSection      = { m in markets where !favorites.contains(m.coin) },
+                   sorted by:
+                     primary:   m.dayNotionalVolume descending
+                     secondary: m.coin ascending (alphabetical tie-break)
+
+result = favoritesSection ++ restSection
+```
+
+The favorites partition uses **alphabetical-only** ordering, not volume-then-alphabetical. Rationale: a pinned section's value is predictable location — the user pinned `ETH` and wants to find `ETH` in the same place every time. Volume-based ordering inside the pinned section would shuffle the user's own list, which defeats the affordance. Alphabetical is stable, user-comprehensible, and matches how every other "favorites" list in the iOS ecosystem orders by default.
+
+When `favorites.isEmpty`, the result is identical to the existing Phase 3a sort (volume desc, alphabetical tie). The Markets view renders one "MARKETS" section instead of two; no special-casing needed in the sort itself.
+
+### 24.4 Observation mechanism
+
+**Chosen:** `AsyncStream<Set<String>>` exposed as `FavoriteCoinsStore.didChange`, consumed by `MarketsView` in a `.task` block that calls `viewModel.applyFavorites(_:)` on each emission.
+
+**Justification:** the simplest pattern that doesn't break `SnapshotViewModel`'s shape. Alternatives:
+
+- *Closure injection both ways.* The view model takes `onFavoritesChanged: ...` plus a setter to push updates back. Requires the composition root to wire two directions, and re-introduces the "who calls whom first" question at startup.
+- *`NotificationCenter`.* Ambient global; defeats the constructor-injection rule from §5; testability requires faking notifications.
+- *Rebuild the view model on every favorites change.* Discards `state` and `lastLoaded`, forcing the spinner to flash on every star tap. Unacceptable.
+- *Store the favorites set inside the view model and let the view drive toggles directly through the store.* Splits source of truth — view model holds one copy, store holds another, they drift if any path forgets to update both.
+
+`AsyncStream` keeps `SnapshotViewModel`'s `postProcess` closure shape intact. The Markets view model:
+
+1. Holds `private(set) var favorites: Set<String> = []`.
+2. Captures `self` weakly inside the `postProcess` closure used by the `markets(client:favoriteCoinsStore:)` factory; the closure reads `self.favorites` at sort time.
+3. Exposes `applyFavorites(_ next: Set<String>)`. If `next == favorites`, no-op. Otherwise assigns and, if `state == .loaded(prior)`, recomputes the sort over `prior` and reassigns `.loaded(newOrder)`. Other states are left alone — the next `load()` will see the new favorites via the captured closure.
+
+The subscription lives in `MarketsView`'s `.task` modifier so it is bounded by view lifetime. SwiftUI cancels the task on disappear; no manual unsubscribe. The `AsyncStream` emits the current set on subscription, so the view model gets the correct initial value before its first `load()` completes.
+
+This adds **one** new method to the Markets view model (`applyFavorites(_:)`) and **zero** new shapes to `SnapshotViewModel`. The generic stays generic.
+
+### 24.5 Composition root and injection
+
+Construction lives in `OpenHLApp.init()`, alongside `client` and `addressStore`. The instance is held by `OpenHLApp` and passed through `RootTabShell` into `MarketsView`'s constructor, alongside the existing `(client, clock)` triple.
+
+```
+OpenHLApp
+  ├─ client: any HyperliquidClient
+  ├─ addressStore: any AddressStore
+  ├─ favoriteCoinsStore: any FavoriteCoinsStore   ← new
+  └─ RootTabShell(... favoriteCoinsStore: ...)
+       └─ MarketsView(viewModel:, client:, clock:, favoriteCoinsStore:)
+            ├─ subscribes to didChange in .task, calls viewModel.applyFavorites(_:)
+            ├─ passes favoriteCoinsStore.isFavorite(market.coin) to MarketRowView
+            └─ passes { favoriteCoinsStore.toggle(market.coin) } as onToggleFollow
+```
+
+`MarketRowView` already has unwired `isFollowed: Bool` and `onToggleFollow: (() -> Void)?` params from Phase 3a; Phase 3d wires them. The row does not own a reference to the store — it receives the boolean and the closure from `MarketsView`, which is the layer that knows the store. This keeps the row stateless and previewable with hand-rolled flags.
+
+The `markets(client:favoriteCoinsStore:)` factory on `SnapshotViewModel where Snapshot == [Market]` takes both dependencies so the `postProcess` closure can capture the favorites reference. Existing callers updating from `markets(client:)` to `markets(client:favoriteCoinsStore:)` is a single edit in `RootTabShell.init`.
+
+For UI tests and previews the composition root injects `InMemoryFavoriteCoinsStore(initial:)`. For production, `UserDefaultsFavoriteCoinsStore()`. No environment-injected ambient services — same rule as Phase 1/2.
+
+### 24.6 iCloud sync
+
+Defers to Phase 3f (Settings + iCloud backup). The protocol surface is small enough that a future `NSUbiquitousKeyValueStoreFavoriteCoinsStore` conforms without touching the protocol or any caller. We are not designing for that here.
+
+### 24.7 What the view layer is *not* allowed to do
+
+- Read `UserDefaults` directly. The composition root owns the only access point.
+- Hold a `Set<String>` separately from the view model's copy. The view model is the single source of truth for "what does Markets render"; the store is the source of truth for persistence; the view reads through the view model.
+- Re-sort markets inside the view. The sort is the view model's `postProcess` closure; the view consumes already-sorted output and renders sections by partitioning on `favoriteCoinsStore.isFavorite(market.coin)`.
+
+
+## 25. Wallet balance-history graph (Phase 3e)
+
+Phase 3e adds a `Portfolio` snapshot fetched from `POST /info` with `{"type":"portfolio","user":"0x..."}`. It powers a new balance-history graph that sits above the Positions tab. This section documents the transport-layer shape; the view-model and view shape live with the implementing agent's deliverables.
+
+### 25.1 Endpoint and wire shape
+
+`POST /info` body: single field `user` alongside `type`. Same trivial body as `clearinghouseState`, modeled as a new `InfoRequest.portfolio(user: Address)` case.
+
+Response is an **outer array of 8 entries**. Each entry is itself a heterogeneous 2-tuple `[ "<windowName>", { accountValueHistory, pnlHistory, vlm } ]`, where `<windowName>` is one of `day | week | month | allTime | perpDay | perpWeek | perpMonth | perpAllTime`, and each history field inside the object is itself an array of `[<ms:Int>, "<decimalString>"]` 2-tuples.
+
+`PortfolioDTO` hand-rolls the heterogeneous-tuple decoder via `unkeyedContainer()`, the same pattern used by `MetaAndAssetCtxsDTO` (§18). The inner `[ms, "decimal"]` 2-tuple is its own DTO (`PortfolioHistoryPoint`) with its own unkeyed-container decoder.
+
+### 25.2 Window filtering: four surfaced, four dropped
+
+The user-facing `PortfolioWindow` enum exposes only `.day, .week, .month, .allTime` — the four windows that include perp + spot together. The parallel `perp*` quartet from the API duplicates the perp-only view that v1 already shows everywhere else, and v1 has no spot/perp toggle. They are decoded then silently dropped at `PortfolioDTO.toDomain()`.
+
+Unknown window names (future API additions) are also silently dropped, same defensive posture as `CandleDTO.toCandles()` dropping bars with unknown intervals.
+
+A future "spot vs. perp" feature does *not* introduce a new endpoint or a new DTO. It adds the four `perp*` cases to `PortfolioWindow` and stops dropping them at the DTO boundary. No transport-layer migration needed.
+
+### 25.3 `vlm` decoded but not surfaced
+
+The `vlm` array (seven daily notional-volume buckets) is fully decoded into `PortfolioSeries.volume` even though v1 does not draw a volume chart. The cost is negligible — seven small structs per window times four windows = 28 points — and shipping the field means a future "tap to show daily volume chip" feature requires zero transport changes. Decoded-but-hidden is cheaper than decoded-on-demand here because there is only one `portfolio` call per refresh and the payload is small.
+
+### 25.4 Domain shape: `Portfolio` and `PortfolioSeries`
+
+`Portfolio` is `Sendable, Equatable` and indexes its four series via a `[PortfolioWindow: PortfolioSeries]` dictionary plus a `subscript(window:)` convenience returning `PortfolioSeries?`. The optional return surface is intentional: although Hyperliquid currently always returns all four windows, the dictionary models that assumption explicitly so a view model that asks for `.allTime` and receives `nil` falls back gracefully rather than crashing.
+
+`PortfolioSeries` holds three parallel arrays: `accountValue`, `pnl`, `volume`. The three arrays do **not** share an x-axis or a sample count — the API reports each independently. View models that draw account-value and PnL together must align by `time` or draw them on separate plots; the transport layer does not impose alignment.
+
+`PortfolioPoint` is `Sendable, Equatable, Hashable` with `time: Date` (UTC, derived from epoch-ms) and `value: Decimal`.
+
+### 25.5 Decimal parsing
+
+The `[ms, "decimal"]` mixed-type wire form cannot use `@DecimalString` directly — property wrappers need a `Decodable` field, not an unkeyed-container position. `PortfolioHistoryPoint.init(from:)` calls `Decimal(string:)` and throws `DecodingError.dataCorrupted` on malformed input, which the `perform()` pipeline maps to `HyperliquidError.decoding` — identical observable behavior to `@DecimalString`.
+
+### 25.6 Client and composition root
+
+`HyperliquidClient` gains `func portfolio(for user: Address) async throws -> Portfolio`. The production impl calls the shared `perform()` helper. No new retry, cap, or sort rules apply — the response is small, bounded, and consumed wholesale.
+
+The composition root needs no new wiring: the existing `client` injection covers the new method via the protocol. The balance-history view model takes the same `(client, addressStore, clock)` triple every other Phase 1/2/3 view model takes; it lives in the Positions tab's view tree and is constructed there.
+
+
+## 26. Settings + iCloud Key-Value backup (Phase 3f)
+
+Phase 3f introduces the app's first Settings screen and an opt-in iCloud backup for two pieces of state: the saved wallet address and the favorite-coins set. The backup channel is `NSUbiquitousKeyValueStore`, not full CloudKit — the payload is a few hundred bytes total and the default key-value sync semantics are exactly what we want.
+
+### 26.1 Privacy posture: default OFF, explicit opt-in
+
+The toggle defaults to **OFF**. Wallet addresses are public on-chain, but the user may legitimately consider their address private (it links every Hyperliquid trade they have ever made), and "the app I installed quietly mirrored my address into my iCloud account on first launch" is exactly the kind of surprise §4 of `CLAUDE.md`'s non-negotiables exists to prevent. The user must visit Settings and flip the switch.
+
+Turning the toggle OFF does **not** delete iCloud data. The user can re-enable later and the previously-saved values flow back down via the reconciliation path (§26.3). An explicit "Erase iCloud copy" affordance is out of scope for v1 — added later if the App Store privacy review requires it.
+
+### 26.2 Module layout: `OpenHLCore` owns the infrastructure, `HyperliquidAPI` owns the address decorator
+
+| Type | Module | Why there |
+|---|---|---|
+| `UbiquitousKeyValueStore` (protocol) | `OpenHLCore` | Pure Foundation seam; no `Address` knowledge |
+| `SystemUbiquitousKeyValueStore` | `OpenHLCore` | Wraps `NSUbiquitousKeyValueStore.default` |
+| `InMemoryUbiquitousKeyValueStore` | `OpenHLCore` | Test fake |
+| `ICloudBackupToggle` (protocol) | `OpenHLCore` | UI preference, no API surface |
+| `UserDefaultsICloudBackupToggle` | `OpenHLCore` | Same module as the storage primitive |
+| `ICloudBackupKey` (constants) | `OpenHLCore` | Shared key namespace |
+| `ICloudBackedFavoriteCoinsStore` | `OpenHLCore` | Wraps a type that already lives in `OpenHLCore` |
+| `ICloudBackedAddressStore` | `HyperliquidAPI` | Wraps `AddressStore`, which lives in `HyperliquidAPI` (see §22 / `AddressStore.swift`). The decorator depends on `OpenHLCore` for the KVS protocol and the toggle, which is the existing downward dependency direction. |
+
+Placing `ICloudBackedAddressStore` in `OpenHLCore` would force `OpenHLCore` to import `HyperliquidAPI` to see the `AddressStore` protocol — an upward dependency that inverts the module graph in §2. The decorator's split location is the price of keeping that graph clean. Both decorators share identical reconciliation logic, copied (not extracted) because extracting it would also require the protocol-inversion above.
+
+### 26.3 Dual-write and last-writer-wins reconciliation
+
+Both decorators implement the same two-rule contract.
+
+**On every mutating call (`save`, `clear`, `toggle`):**
+1. Write to the wrapped store first. Local UI must never wait on iCloud.
+2. Stamp UserDefaults with the current epoch-ms (`updatedAt`).
+3. If the toggle is enabled, write the value + the same epoch-ms to KVS.
+
+**On init and on `applyExternalChange()` / `applyToggle(true)`:**
+1. Read `localUpdatedAt` from UserDefaults and `remoteUpdatedAt` from KVS.
+2. Compare:
+   - Remote newer → adopt remote into the wrapped store; update `localUpdatedAt` to match.
+   - Local newer (or remote missing and local present) → push local up to KVS.
+   - Equal or both nil → no-op.
+3. Tie semantics prefer local: avoids spurious churn when two devices wrote identical content in the same millisecond.
+
+`updatedAt` is **epoch milliseconds, stored as JSON-encoded `Int64`** in both locations. We do not use `Clock` from `OpenHLCore` because `Clock` returns `Date` and the only operations the decorators perform are integer comparisons and JSON round-trips. A bespoke `EpochMillisClock = @Sendable () -> Int64` typealias makes the time injection point obvious to tests and avoids dragging `Date` math into the reconciliation switch.
+
+**Failure modes (silently swallowed):**
+- Missing iCloud entitlement → KVS reads return `nil`, writes are dropped. The wrapped store is the source of truth; no user-visible breakage.
+- User signed out of iCloud → same as above.
+- Malformed remote payload (e.g. KVS holds a non-string blob under `openhl.address`) → treated as "remote cleared the address" during `adoptRemote()`. The next local save propagates a well-formed payload back up. Defensive parity with `UserDefaultsAddressStore.load()`'s posture toward malformed local data.
+- KVS quota exceeded (1 MB total per app) → writes silently dropped by the system. Our payload is ~50 bytes for the address plus 16 bytes for the timestamp; we cannot realistically exhaust the quota.
+
+### 26.4 Toggle UI requirements (for `ios-developer`)
+
+The Settings screen Phase 3f ships:
+
+- A single `Form` with one `Section`.
+- One `Toggle("Back up to iCloud", isOn: $isOn)` bound to a tiny `@Observable` `SettingsViewModel` that owns an `ICloudBackupToggle` reference.
+- A footer string under the toggle: `"Stores your wallet address and favorite coins in your iCloud account so they appear on your other devices. Off by default."`
+- When `FileManager.default.ubiquityIdentityToken == nil` (user is not signed into iCloud), the toggle is **disabled** and the footer is replaced with `"Sign in to iCloud in Settings to enable backup."` Don't try to deep-link to system Settings; iOS's permission states make that fragile.
+- No row-tap-to-delete affordance. No "last synced" timestamp. No status badge. v1 keeps it boring.
+
+The Settings tab is the third tab in `RootTabShell`, after Markets and Wallet. SF Symbol: `gear`. Accessibility label: `"Settings tab"`. The view model is `@MainActor @Observable final class` and takes `(toggle: any ICloudBackupToggle)` in its initializer — same shape as every other Phase 1/2/3 view model.
+
+### 26.5 Composition root and observation loops
+
+`OpenHLApp.init()` constructs:
+
+```
+OpenHLApp
+  ├─ kvs = SystemUbiquitousKeyValueStore()
+  ├─ toggle = UserDefaultsICloudBackupToggle()
+  ├─ addressStore = ICloudBackedAddressStore(wrapping: UserDefaultsAddressStore(), kvs:, toggle:)
+  ├─ favoritesStore = ICloudBackedFavoriteCoinsStore(wrapping: UserDefaultsFavoriteCoinsStore(), kvs:, toggle:)
+  └─ backupToggle = toggle  (passed to RootTabShell → SettingsView)
+```
+
+The decorators do **not** spawn their own observation tasks. The composition root owns three long-running `Task`s, scoped to `WindowGroup`'s lifetime via `.task` on the root view (`ios-developer` wires the modifier):
+
+1. `for await enabled in toggle.didChange { addressStore.applyToggle(enabled); favoritesStore.applyToggle(enabled) }`
+2. `for await _ in kvs.didExternalChange { addressStore.applyExternalChange(); favoritesStore.applyExternalChange() }`
+3. (Optional) `for await scene phase change` to call `kvs.synchronize()` on background — best-effort early-flush.
+
+Owning the loops at the root keeps the decorators free of `Task` ownership and `deinit` bookkeeping, and means a single subscriber per stream (no fan-out cost). The decorators expose `applyToggle(_:)` and `applyExternalChange()` precisely so the loops can stay external.
+
+The DEBUG composition-root branches (`OPENHL_UI_TEST_STUB`, `OPENHL_UI_TEST_RESET`) inject `InMemoryICloudBackupToggle` and skip the decorator chain entirely — the UI tests do not need the iCloud path and we do not want to mock `NSUbiquitousKeyValueStore.default` from a UI-test process.
+
+### 26.6 Entitlement (manual step, owned by `ios-developer`)
+
+The app target needs the `iCloud → Key-value storage` entitlement. Steps:
+
+1. In Xcode, select the OpenHL target → Signing & Capabilities → `+ Capability` → `iCloud`.
+2. Check `Key-value storage`. No container needs to be selected — KVS uses the app's bundle ID automatically.
+3. The default ubiquity container identifier is `$(TeamIdentifierPrefix)$(CFBundleIdentifier)`. Leave it.
+
+In Debug builds without provisioning, the entitlement may be absent — that's fine. `SystemUbiquitousKeyValueStore` degrades to a no-op store; the unit tests and UI tests run against `InMemory…` fakes; manual QA against a signed development build is what verifies the live iCloud path.
+
+### 26.7 What this section is *not*
+
+- No CloudKit. KVS only.
+- No conflict-resolution UI. Last-writer-wins is good enough for this payload.
+- No "history" or "version" of saved addresses. We only ever store the current one.
+- No syncing of the toggle state itself across devices (§26.1 explains why).
+- No alert when a remote write lands. The favorites and address view models already observe their stores and re-render automatically.
+

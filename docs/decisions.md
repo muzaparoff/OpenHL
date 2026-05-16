@@ -252,3 +252,120 @@ Append-only. Newest entries at the bottom. Each entry: date, title, context, dec
 - *Add `.rateLimited(retryAfter: Date?)`.* Rejected for Phase 2: no UI design exists for it, and Hyperliquid does not consistently emit `Retry-After`. The view-model's `.badRequest` rendering is the honest answer today.
 - *Add `.userNotFound`.* Rejected: Hyperliquid does not signal this distinctly from other 4xx; we would be inferring semantics we cannot reliably distinguish.
 
+---
+
+## 2026-05-16 — `CandleInterval.bestFit(for:)` clamp ladder for Custom-mode date ranges
+
+**Context:** Phase 3c adds a Custom date-range picker to the coin-detail chart. The user picks any `(start, end)` pair; the app picks the granularity. Three options were credible: (a) let the user pick both range and granularity independently; (b) auto-clamp granularity from the span via a fixed lookup table; (c) pick the granularity that targets a constant bar count (e.g. always aim for ~150 bars).
+
+**Decision:** Option (b) — a fixed lookup table on `CandleInterval`:
+
+| Span                    | Granularity   |
+|-------------------------|---------------|
+| ≤ 2 days                | `.oneHour`    |
+| ≤ 30 days               | `.fourHour`   |
+| ≤ 180 days              | `.oneDay`     |
+| ≤ 2 years (≤ 730 days)  | `.oneWeek`    |
+| > 2 years               | `.oneDay` (caller clamps span via `validate(customRange:now:)`) |
+
+Implemented as the pure static function `CandleInterval.bestFit(for: DateInterval) -> CandleInterval`. The max span allowed by `validate(customRange:now:)` is **3 years**.
+
+**Rationale:** Option (a) — two independent controls — doubles the picker surface area for a power-user feature most users will never touch, and admits combinations the API can't satisfy (5-minute bars over a year is `~105,000` bars; Hyperliquid returns ~500). Option (c) — constant-bar-count targeting — sounds elegant but produces visually unstable boundaries: dragging the end date one day forward could flip the granularity, redrawing the entire chart. The fixed table has stable, user-comprehensible boundaries: "under a month gets 4-hour bars" is a sentence the user can hold in their head. The ladder rungs are picked so each rung produces between ~48 and ~180 bars at the upper end of its span — comfortably under the 500-bar API cap, comfortably above the threshold where a candlestick chart degenerates into noise. `.fourHour` survives as a `bestFit` rung even though it left `userFacing`; the 2–30 day band is the only range where 4h is the right tradeoff between detail and cap, and dropping it would force that band onto either `.oneHour` (~720 bars; truncated) or `.oneDay` (~30 bars; coarse). The 3-year span cap exists for the same API-cap reason: at `.oneWeek` granularity, 3 years is ~156 bars (safe); 5 years would push to ~260 bars at `.oneWeek` (still safe) but the `bestFit` table doesn't model that band, and the user-experience value of "five years of one coin's price" is dubious enough that we defer rather than re-rung the table.
+
+**Alternatives considered:**
+- *Independent range + granularity controls.* Rejected: admits invalid combinations; doubles picker complexity for a power-user feature.
+- *Constant-bar-count targeting.* Rejected: visually unstable boundaries; chart redraws on every small range tweak.
+- *Add `.fourHour` back to `userFacing`.* Rejected: 4h's place in the preset ladder is precisely the awkward middle that motivated dropping it; the Custom-mode rung is a different question (granularity within an explicit user-chosen span, not a default preset).
+- *Cap span at 1 year, not 3.* Considered. `.oneMonth.defaultLookback` is already 3 years; aligning the user-facing cap with the existing internal lookback keeps the codebase coherent and gives `.oneWeek` a justification.
+
+---
+
+## 2026-05-16 — `Mode` enum (not `(interval, range?)` tuple) for coin-detail parameters
+
+**Context:** The Phase 3c coin-detail view model needs to represent two states: "standard preset selected" and "custom range selected." Three credible shapes: (a) `var interval: CandleInterval` + `var customRange: DateInterval?` with `customRange != nil` meaning "Custom mode"; (b) a single `Mode` enum with `.standardInterval(Preset)` and `.customRange(DateInterval)` cases; (c) two separate view models.
+
+**Decision:** Option (b). `CoinDetailViewModel.Mode` is a closed enum; the picker binds to `mode` through `setMode(_:)`. A nested `Preset` enum holds the five standard-mode entries (1h / 1D / 1W / 1M / 1y) because two of them (`.oneMonth`, `.oneYear`) reuse `.oneDay` as the underlying granularity and need distinct labels and lookbacks. `viewModel.interval` survives as a computed read-only property (`mode.interval`) so existing view code (the x-axis label switch) keeps compiling.
+
+**Rationale:** A two-property representation admits ill-formed combinations — a `customRange` set while `interval` still points at a preset's value, or a preset selected while `customRange` is non-nil. The view code would have to nominate one as authoritative or carry guard logic at every read site. A closed enum makes the modes mutually exclusive at the type level: every consumer pattern-matches in a single switch, and the compiler enforces both branches are handled. Two separate view models would duplicate the entire `State` machine, fetch path, error mapping, and `lastLoaded` plumbing for a screen that already exists; mode switching would also have to thread `market`/`client`/`clock` through a parent. The nested `Preset` rather than a `(CandleInterval, lookback)` tuple is the same argument one level down: tuples admit ill-formed values (`.oneWeek` paired with a 30-second lookback); a closed enum doesn't.
+
+**Alternatives considered:**
+- *`(interval, customRange?)` two-property representation.* Rejected: admits ill-formed combinations; every read site needs guard logic.
+- *Two separate view models.* Rejected: duplicates state machine and fetch plumbing for zero benefit.
+- *Flatten `Preset` into the outer `Mode` cases (`.oneHour, .oneDay, .oneWeek, .oneMonth, .oneYear, .custom(DateInterval)`).* Rejected as marginal: `Mode.Preset` exists separately so that `Preset.allCases` drives the picker and the picker doesn't have to know about `.custom`. Keeping the two concerns separate lets the Custom segment be a sibling button rather than a sixth case the picker iterates over.
+
+---
+
+## 2026-05-16 — Favorite coins stored as `Set<String>`, persisted in `OpenHLCore`
+
+**Context:** Phase 3d adds pinned (favorite) coins to the Markets list. Three orthogonal design questions: (1) what data shape do we persist (rich struct vs. simple symbol set vs. address-scoped list); (2) which package owns the persistence protocol (`OpenHLCore` vs. `HyperliquidAPI` vs. a new package); (3) how does the Markets view model learn about toggles.
+
+**Decision:** Persist a `Set<String>` of coin symbols. The `FavoriteCoinsStore` protocol and its `UserDefaults` / in-memory implementations live in `OpenHLCore`. The Markets view model observes changes via an `AsyncStream<Set<String>>` exposed on the protocol (`var didChange`).
+
+**Rationale:**
+
+- *`Set<String>` over `[Address]` or a richer struct.* Favorites are a UI preference, not a per-wallet preference; the pinned set follows the user across any wallet address they enter. `Set` (not `[String]`) because the dominant operation is `isFavorite(coin)`, called once per row on every Markets render — `O(1)` set contains. Phase 3d ships only binary pinned/unpinned state, so a richer struct (`FavoriteCoin { symbol, pinnedAt, … }`) would carry unused fields and force a migration when those fields go unused. Ordering inside the pinned section is alphabetical, not insertion-order; if a later phase wants "most recently pinned first," it gets its own decision entry and a struct upgrade.
+- *`OpenHLCore` over `HyperliquidAPI`.* Favorites have nothing to do with the Hyperliquid API — they never travel over the wire, no DTO references them, and the server has no concept of "favorite." Co-locating with `HyperliquidClient` would import a UI preference into a package that exists to model transport. The argument that put `AddressStore` in `HyperliquidAPI` (it traffics in `Address` and may grow a Keychain variant) does not apply: favorites are plain `String` and there is no plausible future implementation that wants Keychain. `OpenHLCore` already exposes value-store-flavored utilities (`Clock`, `MoneyFormatter`, decoder helpers) and its leaf-module invariant (Foundation-only) holds for this file.
+- *`AsyncStream` observation.* Keeps `SnapshotViewModel`'s shape intact. The view model adds one method (`applyFavorites(_:)`) and zero new generic constraints. The subscription is bound to view lifetime via SwiftUI `.task`, so there is no manual unsubscribe. The stream emits the current value on subscription, so the view model gets the right initial value before its first `load()` completes. Multiple subscribers (preview + test + production) work because the store fans out across registered continuations behind a lock.
+
+**Alternatives considered:**
+
+- *`[Address: Set<String>]` keyed by wallet.* Rejected: makes the user re-pin their list when they switch wallets, which contradicts the affordance ("these are the coins I care about"). Also forces a migration when an address is cleared.
+- *Rich `FavoriteCoin` struct with `pinnedAt`.* Deferred. The only consumer of `pinnedAt` would be a future "sort by recency" view; we'll upgrade the struct when that view exists.
+- *Put `FavoriteCoinsStore` in `HyperliquidAPI`.* Rejected: drags a UI preference into the transport module; sets a precedent that "any protocol that does I/O can go in API."
+- *Create a new `OpenHLPersistence` package.* Rejected: one protocol and two implementations don't justify a package. If Phase 3e+ adds SwiftData-backed snapshots and Keychain-backed wallets, we revisit then with multiple residents.
+- *Closure-based observation (view model takes `onFavoritesChanged:` closure).* Rejected: requires the composition root to wire two directions; adds startup-ordering questions; tests have to drive the closure manually.
+- *`NotificationCenter`.* Rejected: ambient global; defeats constructor injection; testability requires faking notifications.
+- *Rebuild the view model on every toggle.* Rejected: discards `state` and `lastLoaded`, flashing the spinner on every star tap.
+
+---
+
+## 2026-05-16 — Portfolio endpoint — window selection, `vlm` decoded-but-hidden, tuple-array decoder reuse
+
+**Context:** Phase 3e adds a wallet balance-history graph powered by `POST /info {"type":"portfolio","user":"0x..."}`. The endpoint returns an outer array of 8 entries; each entry is a heterogeneous 2-tuple `["<windowName>", { accountValueHistory, pnlHistory, vlm }]` with window names `day | week | month | allTime | perpDay | perpWeek | perpMonth | perpAllTime`. Three orthogonal questions had to be resolved before writing the DTO: (1) which windows does the user-facing enum expose; (2) what do we do with the `vlm` (daily volume) array that v1 has no UI for; (3) which decoder pattern do we reach for given the mixed-type tuple-of-tuples wire shape.
+
+**Decision:**
+
+1. **Four windows surfaced, four silently dropped.** `PortfolioWindow` exposes only `.day, .week, .month, .allTime`. The `perp*` quartet is decoded and dropped at `PortfolioDTO.toDomain()`. Unknown future window names are also silently dropped.
+2. **`vlm` decoded but not surfaced in v1.** The wire field maps into `PortfolioSeries.volume: [PortfolioPoint]`, fully populated, with no UI affordance. View layer never reads it in v1.
+3. **Reuse the `unkeyedContainer()` heterogeneous-tuple-array pattern.** No new decoder genre. The outer array, each `(windowName, series)` entry, and each `[ms, "decimal"]` history point all use hand-rolled `unkeyedContainer()` decoders — same pattern `MetaAndAssetCtxsDTO` uses for the two-element `[meta, assetCtxs]` heterogeneous array.
+
+**Rationale:**
+
+- *Why four windows, not eight.* The four "headline" windows (`day/week/month/allTime`) include perp + spot together — they match what the hyperliquid.xyz portfolio chart shows by default. The `perp*` quartet duplicates the perp-only view that v1 already shows everywhere else (positions are perp-only in v1; spot is a Phase 4+ concern). Surfacing eight windows in a four-segment picker would either force a "Spot/Perp" toggle we haven't designed or require labels like "Day (Perp)" that don't match anything else in the app. Cleaner to ship four now and add the four perp-only cases (and a spot/perp toggle) as a deliberate Phase 4 expansion. The drop happens at the DTO boundary — a single switch in `userFacingWindow(for:)` — so the upgrade path is "add four enum cases and stop dropping," not a transport rewrite.
+- *Why decode `vlm` we don't draw.* Cost is negligible: seven `PortfolioPoint`s per window × four windows = 28 small structs per refresh. The alternative — decoding only `accountValueHistory` and `pnlHistory` — saves perhaps 100 bytes of RAM and forces a re-fetch the moment any future feature wants a volume chip. The same logic that put `cumFunding` *out* of `PositionDTO` in Phase 1 (no plausible v1+v2 consumer) puts `vlm` *in* here (an obvious near-future consumer exists, payload is tiny, parsing is trivial). Documented in `PortfolioSeries` doc-comments so future readers understand why a public field exists with no caller.
+- *Why reuse the `unkeyedContainer()` pattern rather than build a new decoder shape.* The wire form is structurally the same kind of "heterogeneous fixed-arity tuple" that `MetaAndAssetCtxsDTO` decodes for `[meta, assetCtxs]` — just nested one extra level (an array of such tuples). Hand-rolling three small `init(from:)` decoders (`PortfolioDTO` for the outer array, `Entry` for `(windowName, series)`, `PortfolioHistoryPoint` for `[ms, "decimal"]`) is ~30 lines total, all type-safe at the boundary, with no third-party dependency. The alternative — decode into `[JSONValue]` and post-process — defers errors out of the decoder and into runtime conditionals scattered across the mapper. Worth pinning the pattern as the **default** for any future Hyperliquid endpoint that returns a heterogeneous tuple at any nesting level.
+- *Decimal parsing without `@DecimalString`.* The mixed-type `[ms, "decimal"]` 2-tuple can't use `@DecimalString` (property wrappers need a `Decodable` field, not an unkeyed-container position). `Decimal(string:)` called directly inside `PortfolioHistoryPoint.init(from:)` with a `DecodingError.dataCorrupted` on `nil` reproduces the same observable error behavior — the `perform()` pipeline maps `DecodingError` to `HyperliquidError.decoding` identically.
+
+**Alternatives considered:**
+
+- *Expose all eight windows in `PortfolioWindow` and let the view model filter.* Rejected: pushes a transport concern (which windows are duplicated by which) into every consumer; couples the view-model layer to API trivia that should live at the boundary.
+- *Expose a single `style: .combined | .perp` toggle plus four windows.* Rejected for v1: there's no spot view yet, so the toggle has no meaningful "other side" — and once spot exists in Phase 4+, a richer model is warranted than just a perp/combined boolean.
+- *Skip decoding `vlm` until a feature needs it.* Rejected: adding a field later is an `OpenHLCore` ABI change for `PortfolioSeries`, and the parsing cost is in the noise. The cheaper place to defer a decision is in the UI (decode-and-hide), not in the DTO.
+- *Decode the outer array as `[JSONValue]` and post-process in pure Swift.* Rejected: defers decoding errors into runtime conditionals; loses the type-safe boundary that the rest of the package keeps.
+- *Wrap each `[ms, "decimal"]` tuple in a tiny `Codable` struct backed by `init(from: unkeyedContainer)`.* This is what we did; the rejected alternative was reaching for a third-party "tuple-codable" macro/library — gratuitous given a five-line `init`.
+
+---
+
+
+## 2026-05-16 — Phase 3f: iCloud Key-Value backup (not CloudKit), default OFF, dual-write decorator
+
+**Context:** Phase 3f introduces the first Settings screen and an optional cross-device backup for the saved wallet address and the favorite-coins set. Options on the table: (a) `NSUbiquitousKeyValueStore` (KVS), (b) a full CloudKit private database with a single record per user, (c) ship Settings without any backup and revisit. Privacy posture is also live: the wallet address is public on-chain but the user may consider it private.
+
+**Decision:** Use `NSUbiquitousKeyValueStore` behind a decorator pattern. Both `AddressStore` and `FavoriteCoinsStore` are wrapped by `iCloudBacked…Store` types that dual-write to their underlying UserDefaults-backed store *and* to KVS. A separate `ICloudBackupToggle` (UserDefaults-backed, single bool) gates the dual-write; it defaults to OFF. The toggle state itself is **not** synced across devices (the user must opt in on each device). Reconciliation on init and on `NSUbiquitousKeyValueStore.didChangeExternallyNotification` uses last-writer-wins via a parallel `updatedAt` epoch-ms key in both stores.
+
+**Rationale:**
+- *Why not CloudKit:* the payload is ~80 bytes total. CloudKit requires a schema, a container, record-zone configuration, conflict resolution, and a per-record subscription if we want push. KVS gives us automatic background sync, conflict-free key-value semantics, and a 1 MB / 1024-key quota that we will not approach in v1. Trading "engineering velocity now" for "schema flexibility later" is the right call when there is no use case demanding schema flexibility.
+- *Why decorator (vs. baking it into `UserDefaultsAddressStore`):* the bare stores are already used by UI tests and previews; mixing iCloud I/O into them would force every test to either mock `NSUbiquitousKeyValueStore.default` or set up an entitlement. The decorator pattern keeps the bare stores trivial and lets us inject `InMemoryUbiquitousKeyValueStore` for tests.
+- *Why default OFF:* the wallet address is public on-chain but the user has not consented to it leaving the device when they install the app. CLAUDE.md's "no analytics, no tracking" posture extends here by analogy.
+- *Why not sync the toggle:* "you turned on iCloud backup on device A; device B now writes to iCloud without you ever opening Settings on B" is a consent surprise. Each device opts in independently.
+- *Why epoch-ms `Int64` timestamps (not `Date`, not `Clock`):* the only operations are integer compare and JSON round-trip. A `Date`-based design would drag time-zone considerations into the reconciliation switch for zero benefit.
+- *Why the address decorator lives in `HyperliquidAPI` and the favorites decorator in `OpenHLCore`:* the underlying protocols already live in different modules per Phase 1/3d decisions. Co-locating each decorator with its protocol keeps the module dependency graph (§2 of `architecture.md`) downward-only. The "shared" reconciliation logic is copied across the two decorators, not extracted, because the alternative would invert the dependency direction.
+
+**Alternatives considered:**
+- *CloudKit private DB.* Rejected on engineering-velocity grounds (above). Logged as the obvious migration path if we ever need richer schema (per-device sessions, server-side history, etc.).
+- *Default ON.* Rejected on privacy posture grounds.
+- *Sync the toggle state across devices.* Rejected on consent-surprise grounds.
+- *Async API surface for the stores.* Rejected: KVS reads and writes are synchronous (the cache is in-process); adding `async` would force every caller into `await` for no behavioral benefit. Existing `AddressStore` / `FavoriteCoinsStore` shapes are preserved.
+- *Skip backup entirely in v1.* Rejected: the address-entry friction on a new device is real and KVS is the cheapest possible cure.
+- *Encrypt the payload before writing to KVS.* Rejected: KVS is already inside the user's iCloud account (per-Apple-ID, encrypted at rest by Apple). Adding app-layer encryption only matters under a threat model where the user's Apple ID is compromised, in which case the attacker already has every other app's KVS payload too. Not worth the key-management complexity for a public address + a set of coin symbols.
+

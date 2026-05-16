@@ -54,6 +54,11 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        BGTaskSchedulerPermittedIdentifiers:
+          - xyz.hyperliquid.openhl.refresh
+        UIBackgroundModes:
+          - fetch
+          - processing
     dependencies:
       - package: OpenHLCore
       - package: HyperliquidAPI

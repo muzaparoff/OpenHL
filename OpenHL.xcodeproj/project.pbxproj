@@ -12,6 +12,7 @@
 		7F4780A25BCFFF246E4FA91C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEC406F79407BFE1364BFDB /* ContentView.swift */; };
 		B3225B12956F858898A85224 /* OpenHLCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7239735FCF556C26368125C0 /* OpenHLCore */; };
 		E222BEB8479B48FECC20F30C /* OpenHLUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A6C935F53ECAA4C658FB15D /* OpenHLUITests.swift */; };
+		AA000001000000000000AA20 /* WatchAddressLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A020 /* WatchAddressLiveTests.swift */; };
 		ECC660761D019BECC56E9F2E /* OpenHLApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4217EF35642805A967ED7490 /* OpenHLApp.swift */; };
 		FB75C4AA05BF84AB17BCA30F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2A34E97FC8298BD529A0107 /* Assets.xcassets */; };
 		AA000001000000000000AA01 /* AddressEntryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A001 /* AddressEntryViewModel.swift */; };
@@ -20,6 +21,35 @@
 		AA000001000000000000AA04 /* PositionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A004 /* PositionsView.swift */; };
 		AA000001000000000000AA05 /* PreviewHyperliquidClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A005 /* PreviewHyperliquidClient.swift */; };
 		AA000001000000000000AA06 /* UITestStubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A007 /* UITestStubClient.swift */; };
+		AA000001000000000000AA08 /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A008 /* ErrorStateView.swift */; };
+		AA000001000000000000AA09 /* ErrorBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A009 /* ErrorBannerView.swift */; };
+		AA000001000000000000AA10 /* StringHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A010 /* StringHelpers.swift */; };
+		AA000001000000000000AA11 /* OrdersViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A011 /* OrdersViewModel.swift */; };
+		AA000001000000000000AA12 /* OrdersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A012 /* OrdersView.swift */; };
+		AA000001000000000000AA13 /* FillsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A013 /* FillsViewModel.swift */; };
+		AA000001000000000000AA14 /* FillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A014 /* FillsView.swift */; };
+		AA000001000000000000AA15 /* ViewErrorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A015 /* ViewErrorState.swift */; };
+		AA000001000000000000AA16 /* SnapshotViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A016 /* SnapshotViewModel.swift */; };
+		AA000001000000000000AA18 /* MarketRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A018 /* MarketRowView.swift */; };
+		AA000001000000000000AA19 /* MarketsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A019 /* MarketsView.swift */; };
+		AA000001000000000000AA1A /* MarketsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A01A /* MarketsViewModel.swift */; };
+		AA000001000000000000AA1B /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A01B /* WalletView.swift */; };
+		AA000001000000000000AA1C /* CoinDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A01C /* CoinDetailView.swift */; };
+		AA000001000000000000AA1D /* CoinDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A01D /* CoinDetailViewModel.swift */; };
+		AA000001000000000000AA1E /* CoinDetailCustomRangeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A01E /* CoinDetailCustomRangeSheet.swift */; };
+		AA000001000000000000AA1F /* BalanceHistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A01F /* BalanceHistoryViewModel.swift */; };
+		AA000001000000000000AA3E /* BalanceHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001000000000000A03E /* BalanceHistoryView.swift */; };
+		AA000003C0000000000003C1 /* Phase3cValidateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003C0000000000003F1 /* Phase3cValidateTests.swift */; };
+		AA000003C0000000000003C2 /* Phase3cViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003C0000000000003F2 /* Phase3cViewModelTests.swift */; };
+		AA000003D0000000000003C3 /* Phase3dMarketsSortTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003D0000000000003F3 /* Phase3dMarketsSortTests.swift */; };
+		AA000003D0000000000003C4 /* Phase3dFavoriteCoinsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000003D0000000000003F4 /* Phase3dFavoriteCoinsUITests.swift */; };
+		AA3F00010000000000003FA1 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F00010000000000003EA1 /* SettingsViewModel.swift */; };
+		AA3F00010000000000003FA2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3F00010000000000003EA2 /* SettingsView.swift */; };
+		AA3G00010000000000003GA1 /* AlertsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3G00010000000000003EA1 /* AlertsListView.swift */; };
+		AA3G00010000000000003GA2 /* AlertsListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3G00010000000000003EA2 /* AlertsListViewModel.swift */; };
+		AA3G00010000000000003GA3 /* AlertEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3G00010000000000003EA3 /* AlertEditorSheet.swift */; };
+		AA3G00010000000000003GA4 /* AlertScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3G00010000000000003EA4 /* AlertScheduler.swift */; };
+		AA3G00010000000000003GA5 /* NotificationPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3G00010000000000003EA5 /* NotificationPermissions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +79,11 @@
 		5DBFA4CE17F351C84B982C15 /* OpenHL.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpenHL.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7554D660B1271667F80164C8 /* OpenHLTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OpenHLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A6C935F53ECAA4C658FB15D /* OpenHLUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenHLUITests.swift; sourceTree = "<group>"; };
+		AA000001000000000000A020 /* WatchAddressLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAddressLiveTests.swift; sourceTree = "<group>"; };
+		AA000003C0000000000003F1 /* Phase3cValidateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase3cValidateTests.swift; sourceTree = "<group>"; };
+		AA000003C0000000000003F2 /* Phase3cViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase3cViewModelTests.swift; sourceTree = "<group>"; };
+		AA000003D0000000000003F3 /* Phase3dMarketsSortTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase3dMarketsSortTests.swift; sourceTree = "<group>"; };
+		AA000003D0000000000003F4 /* Phase3dFavoriteCoinsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase3dFavoriteCoinsUITests.swift; sourceTree = "<group>"; };
 		F2A34E97FC8298BD529A0107 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA000001000000000000A001 /* AddressEntryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressEntryViewModel.swift; sourceTree = "<group>"; };
 		AA000001000000000000A002 /* AddressEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressEntryView.swift; sourceTree = "<group>"; };
@@ -56,6 +91,32 @@
 		AA000001000000000000A004 /* PositionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PositionsView.swift; sourceTree = "<group>"; };
 		AA000001000000000000A005 /* PreviewHyperliquidClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewHyperliquidClient.swift; sourceTree = "<group>"; };
 		AA000001000000000000A007 /* UITestStubClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestStubClient.swift; sourceTree = "<group>"; };
+		AA000001000000000000A008 /* ErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A009 /* ErrorBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorBannerView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A010 /* StringHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringHelpers.swift; sourceTree = "<group>"; };
+		AA000001000000000000A011 /* OrdersViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersViewModel.swift; sourceTree = "<group>"; };
+		AA000001000000000000A012 /* OrdersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A013 /* FillsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillsViewModel.swift; sourceTree = "<group>"; };
+		AA000001000000000000A014 /* FillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillsView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A015 /* ViewErrorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewErrorState.swift; sourceTree = "<group>"; };
+		AA000001000000000000A016 /* SnapshotViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotViewModel.swift; sourceTree = "<group>"; };
+		AA000001000000000000A018 /* MarketRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketRowView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A019 /* MarketsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketsView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A01A /* MarketsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketsViewModel.swift; sourceTree = "<group>"; };
+		AA000001000000000000A01B /* WalletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A01C /* CoinDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoinDetailView.swift; sourceTree = "<group>"; };
+		AA000001000000000000A01D /* CoinDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoinDetailViewModel.swift; sourceTree = "<group>"; };
+		AA000001000000000000A01E /* CoinDetailCustomRangeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoinDetailCustomRangeSheet.swift; sourceTree = "<group>"; };
+		AA000001000000000000A01F /* BalanceHistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceHistoryViewModel.swift; sourceTree = "<group>"; };
+		AA000001000000000000A03E /* BalanceHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceHistoryView.swift; sourceTree = "<group>"; };
+		AA3F00010000000000003EA1 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		AA3F00010000000000003EA2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA3F00010000000000003EA3 /* OpenHL.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenHL.entitlements; sourceTree = "<group>"; };
+		AA3G00010000000000003EA1 /* AlertsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertsListView.swift; sourceTree = "<group>"; };
+		AA3G00010000000000003EA2 /* AlertsListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertsListViewModel.swift; sourceTree = "<group>"; };
+		AA3G00010000000000003EA3 /* AlertEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertEditorSheet.swift; sourceTree = "<group>"; };
+		AA3G00010000000000003EA4 /* AlertScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertScheduler.swift; sourceTree = "<group>"; };
+		AA3G00010000000000003EA5 /* NotificationPermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissions.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +156,8 @@
 		32DDA445713BE2D6D47020FE /* Orders */ = {
 			isa = PBXGroup;
 			children = (
+				AA000001000000000000A011 /* OrdersViewModel.swift */,
+				AA000001000000000000A012 /* OrdersView.swift */,
 			);
 			path = Orders;
 			sourceTree = "<group>";
@@ -103,6 +166,8 @@
 			isa = PBXGroup;
 			children = (
 				9A6C935F53ECAA4C658FB15D /* OpenHLUITests.swift */,
+				AA000001000000000000A020 /* WatchAddressLiveTests.swift */,
+				AA000003D0000000000003F4 /* Phase3dFavoriteCoinsUITests.swift */,
 			);
 			path = OpenHLUITests;
 			sourceTree = "<group>";
@@ -120,6 +185,9 @@
 			isa = PBXGroup;
 			children = (
 				5683494F253481A2F7A4112C /* OpenHLTests.swift */,
+				AA000003C0000000000003F1 /* Phase3cValidateTests.swift */,
+				AA000003C0000000000003F2 /* Phase3cViewModelTests.swift */,
+				AA000003D0000000000003F3 /* Phase3dMarketsSortTests.swift */,
 			);
 			path = OpenHLTests;
 			sourceTree = "<group>";
@@ -138,9 +206,12 @@
 			children = (
 				F1DCE85156EA4E31F87EEA98 /* Resources */,
 				D47E26F27707E93B36419926 /* Screens */,
+				AA3G00010000000000003GB1 /* Services */,
+				AA000001000000000000B001 /* Components */,
 				AA000001000000000000A006 /* PreviewSupport */,
 				1CEC406F79407BFE1364BFDB /* ContentView.swift */,
 				4217EF35642805A967ED7490 /* OpenHLApp.swift */,
+				AA3F00010000000000003EA3 /* OpenHL.entitlements */,
 			);
 			path = OpenHL;
 			sourceTree = "<group>";
@@ -148,8 +219,23 @@
 		A2B91265CE9E2234C6377348 /* Fills */ = {
 			isa = PBXGroup;
 			children = (
+				AA000001000000000000A013 /* FillsViewModel.swift */,
+				AA000001000000000000A014 /* FillsView.swift */,
 			);
 			path = Fills;
+			sourceTree = "<group>";
+		};
+		AA000001000000000000B001 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				AA000001000000000000A008 /* ErrorStateView.swift */,
+				AA000001000000000000A009 /* ErrorBannerView.swift */,
+				AA000001000000000000A010 /* StringHelpers.swift */,
+				AA000001000000000000A015 /* ViewErrorState.swift */,
+				AA000001000000000000A016 /* SnapshotViewModel.swift */,
+				AA000001000000000000A018 /* MarketRowView.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		C583900E4696E03F3FFA7777 /* AddressEntry */ = {
@@ -161,15 +247,77 @@
 			path = AddressEntry;
 			sourceTree = "<group>";
 		};
+		AA3F00010000000000003EB0 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				AA3F00010000000000003EA1 /* SettingsViewModel.swift */,
+				AA3F00010000000000003EA2 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		AA3G00010000000000003GB0 /* Alerts */ = {
+			isa = PBXGroup;
+			children = (
+				AA3G00010000000000003EA1 /* AlertsListView.swift */,
+				AA3G00010000000000003EA2 /* AlertsListViewModel.swift */,
+				AA3G00010000000000003EA3 /* AlertEditorSheet.swift */,
+			);
+			path = Alerts;
+			sourceTree = "<group>";
+		};
+		AA3G00010000000000003GB1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA3G00010000000000003EA4 /* AlertScheduler.swift */,
+				AA3G00010000000000003EA5 /* NotificationPermissions.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		D47E26F27707E93B36419926 /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				AA3G00010000000000003GB0 /* Alerts */,
 				C583900E4696E03F3FFA7777 /* AddressEntry */,
+				AA000001000000000000B005 /* CoinDetail */,
 				A2B91265CE9E2234C6377348 /* Fills */,
+				AA000001000000000000B003 /* Markets */,
 				32DDA445713BE2D6D47020FE /* Orders */,
 				55531380BEFB70BC2727D7E1 /* Positions */,
+				AA3F00010000000000003EB0 /* Settings */,
+				AA000001000000000000B004 /* Wallet */,
 			);
 			path = Screens;
+			sourceTree = "<group>";
+		};
+		AA000001000000000000B005 /* CoinDetail */ = {
+			isa = PBXGroup;
+			children = (
+				AA000001000000000000A01C /* CoinDetailView.swift */,
+				AA000001000000000000A01D /* CoinDetailViewModel.swift */,
+				AA000001000000000000A01E /* CoinDetailCustomRangeSheet.swift */,
+			);
+			path = CoinDetail;
+			sourceTree = "<group>";
+		};
+		AA000001000000000000B003 /* Markets */ = {
+			isa = PBXGroup;
+			children = (
+				AA000001000000000000A019 /* MarketsView.swift */,
+				AA000001000000000000A01A /* MarketsViewModel.swift */,
+			);
+			path = Markets;
+			sourceTree = "<group>";
+		};
+		AA000001000000000000B004 /* Wallet */ = {
+			isa = PBXGroup;
+			children = (
+				AA000001000000000000A01B /* WalletView.swift */,
+				AA000001000000000000A01F /* BalanceHistoryViewModel.swift */,
+				AA000001000000000000A03E /* BalanceHistoryView.swift */,
+			);
+			path = Wallet;
 			sourceTree = "<group>";
 		};
 		AA000001000000000000A006 /* PreviewSupport */ = {
@@ -322,6 +470,31 @@
 				AA000001000000000000AA04 /* PositionsView.swift in Sources */,
 				AA000001000000000000AA05 /* PreviewHyperliquidClient.swift in Sources */,
 				AA000001000000000000AA06 /* UITestStubClient.swift in Sources */,
+				AA000001000000000000AA08 /* ErrorStateView.swift in Sources */,
+				AA000001000000000000AA09 /* ErrorBannerView.swift in Sources */,
+				AA000001000000000000AA10 /* StringHelpers.swift in Sources */,
+				AA000001000000000000AA11 /* OrdersViewModel.swift in Sources */,
+				AA000001000000000000AA12 /* OrdersView.swift in Sources */,
+				AA000001000000000000AA13 /* FillsViewModel.swift in Sources */,
+				AA000001000000000000AA14 /* FillsView.swift in Sources */,
+				AA000001000000000000AA15 /* ViewErrorState.swift in Sources */,
+				AA000001000000000000AA16 /* SnapshotViewModel.swift in Sources */,
+				AA000001000000000000AA18 /* MarketRowView.swift in Sources */,
+				AA000001000000000000AA19 /* MarketsView.swift in Sources */,
+				AA000001000000000000AA1A /* MarketsViewModel.swift in Sources */,
+				AA000001000000000000AA1B /* WalletView.swift in Sources */,
+				AA000001000000000000AA1F /* BalanceHistoryViewModel.swift in Sources */,
+				AA000001000000000000AA3E /* BalanceHistoryView.swift in Sources */,
+				AA000001000000000000AA1C /* CoinDetailView.swift in Sources */,
+				AA000001000000000000AA1D /* CoinDetailViewModel.swift in Sources */,
+				AA000001000000000000AA1E /* CoinDetailCustomRangeSheet.swift in Sources */,
+				AA3F00010000000000003FA1 /* SettingsViewModel.swift in Sources */,
+				AA3F00010000000000003FA2 /* SettingsView.swift in Sources */,
+				AA3G00010000000000003GA1 /* AlertsListView.swift in Sources */,
+				AA3G00010000000000003GA2 /* AlertsListViewModel.swift in Sources */,
+				AA3G00010000000000003GA3 /* AlertEditorSheet.swift in Sources */,
+				AA3G00010000000000003GA4 /* AlertScheduler.swift in Sources */,
+				AA3G00010000000000003GA5 /* NotificationPermissions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +503,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				4EF572F39642D6667BA45B9D /* OpenHLTests.swift in Sources */,
+				AA000003C0000000000003C1 /* Phase3cValidateTests.swift in Sources */,
+				AA000003C0000000000003C2 /* Phase3cViewModelTests.swift in Sources */,
+				AA000003D0000000000003C3 /* Phase3dMarketsSortTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,6 +514,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				E222BEB8479B48FECC20F30C /* OpenHLUITests.swift in Sources */,
+				AA000001000000000000AA20 /* WatchAddressLiveTests.swift in Sources */,
+				AA000003D0000000000003C4 /* Phase3dFavoriteCoinsUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -556,6 +734,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = OpenHL/OpenHL.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 83HPSY452Y;
@@ -604,6 +783,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = OpenHL/OpenHL.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 83HPSY452Y;
